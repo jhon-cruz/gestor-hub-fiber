@@ -15,6 +15,9 @@ def test_interface_is_served_with_security_headers(client):
     assert 'id="map"' in response.text
     assert 'id="imports-dialog"' in response.text
     assert 'id="kmz-file"' in response.text
+    assert 'id="theme-toggle"' in response.text
+    assert 'id="inventory-view"' in response.text
+    assert 'id="inventory-table-body"' in response.text
     assert response.headers["x-frame-options"] == "DENY"
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 

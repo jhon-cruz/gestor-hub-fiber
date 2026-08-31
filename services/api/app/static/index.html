@@ -113,7 +113,7 @@
         </div>
         <nav aria-label="Navegação principal">
           <button class="nav-item active" data-view="map"><span class="nav-icon">⌁</span><span>Mapa da rede</span></button>
-          <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span><small>em breve</small></button>
+          <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span></button>
           <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
           <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇧</span><span>Importar KMZ</span></button>
           <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
@@ -128,8 +128,8 @@
         <header class="topbar">
           <button id="menu-button" class="icon-button menu-button" aria-label="Abrir menu">☰</button>
           <div>
-            <p class="breadcrumb">Operação / <strong>Mapa da rede</strong></p>
-            <h2>Visão geográfica</h2>
+            <p class="breadcrumb">Operação / <strong id="topbar-section">Mapa da rede</strong></p>
+            <h2 id="topbar-title">Visão geográfica</h2>
           </div>
           <div class="topbar-actions">
             <div class="search-box">
@@ -138,6 +138,7 @@
               <kbd>⌘ K</kbd>
             </div>
             <button id="refresh-button" class="icon-button" aria-label="Atualizar mapa">↻</button>
+            <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-label="Ativar tema escuro" aria-pressed="false"><span aria-hidden="true">☾</span></button>
             <div class="user-chip">
               <div id="user-avatar" class="avatar">A</div>
               <div><strong id="current-username">—</strong><small id="current-role">—</small></div>
@@ -145,7 +146,7 @@
           </div>
         </header>
 
-        <section class="map-stage">
+        <section id="map-view" class="map-stage app-view">
           <div id="map" aria-label="Mapa interativo da rede"></div>
 
           <div class="map-overlay map-heading">
@@ -191,6 +192,40 @@
           </aside>
 
           <div id="map-loading" class="map-loading"><span class="spinner"></span> Carregando mapa...</div>
+        </section>
+
+        <section id="inventory-view" class="inventory-stage app-view hidden" aria-labelledby="inventory-title">
+          <header class="inventory-heading">
+            <div>
+              <p class="overline">Domínio óptico</p>
+              <h1 id="inventory-title">Inventário da rede</h1>
+              <p>Consulte os elementos cadastrados manualmente e importados dos projetos KMZ.</p>
+            </div>
+            <button id="inventory-map-button" class="button ghost" type="button">Abrir mapa</button>
+          </header>
+
+          <section class="inventory-stats" aria-label="Resumo do inventário">
+            <article><small>Total de elementos</small><strong id="inventory-total">0</strong><span>ativos geográficos</span></article>
+            <article><small>Infraestrutura óptica</small><strong id="inventory-optical">0</strong><span>CTOs, caixas, OLTs e DIOs</span></article>
+            <article><small>Cabos e rotas</small><strong id="inventory-routes">0</strong><span>segmentos lineares</span></article>
+            <article><small>Capacidade informada</small><strong id="inventory-capacity">0</strong><span>elementos com capacidade</span></article>
+          </section>
+
+          <section class="inventory-card">
+            <div class="inventory-toolbar">
+              <label class="inventory-search"><span aria-hidden="true">⌕</span><input id="inventory-search" type="search" placeholder="Buscar por nome ou origem" aria-label="Buscar no inventário"></label>
+              <label><span class="sr-only">Filtrar por tipo</span><select id="inventory-type-filter"><option value="">Todos os tipos</option></select></label>
+              <label><span class="sr-only">Filtrar por status</span><select id="inventory-status-filter"><option value="">Todos os status</option></select></label>
+              <strong id="inventory-result-count" class="inventory-result-count">0 resultados</strong>
+            </div>
+            <div class="inventory-table-wrap">
+              <table class="inventory-table">
+                <thead><tr><th>Elemento</th><th>Tipo</th><th>Status</th><th>Capacidade</th><th>Origem</th><th><span class="sr-only">Ação</span></th></tr></thead>
+                <tbody id="inventory-table-body"></tbody>
+              </table>
+              <div id="inventory-empty" class="inventory-empty hidden"><span>▦</span><strong>Nenhum elemento encontrado</strong><small>Ajuste os filtros ou importe uma planta KMZ.</small></div>
+            </div>
+          </section>
         </section>
       </section>
     </main>

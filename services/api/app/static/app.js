@@ -48,10 +48,36 @@ const state = {
   hasFitBounds: false,
   importFile: null,
   importPreview: null,
+  view: "map",
 };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function preferredTheme() {
+  const saved = localStorage.getItem("gestorHubTheme");
+  if (["light", "dark"].includes(saved)) return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme, persist = false) {
+  const isDark = theme === "dark";
+  document.documentElement.dataset.theme = isDark ? "dark" : "light";
+  const button = $("#theme-toggle");
+  if (button) {
+    button.setAttribute("aria-pressed", String(isDark));
+    button.setAttribute("aria-label", isDark ? "Ativar tema claro" : "Ativar tema escuro");
+    button.querySelector("span").textContent = isDark ? "☀" : "☾";
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    "content", isDark ? "#03111e" : "#051a2c",
+  );
+  if (persist) localStorage.setItem("gestorHubTheme", isDark ? "dark" : "light");
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+}
 
 function setStatusOptions(select) {
   select.replaceChildren(...STATUS_OPTIONS.map(([value, label]) => {
@@ -60,6 +86,23 @@ function setStatusOptions(select) {
     option.textContent = label;
     return option;
   }));
+}
+
+function setInventoryFilters() {
+  const typeSelect = $("#inventory-type-filter");
+  for (const [value, label] of Object.entries(TYPE_LABELS)) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    typeSelect.append(option);
+  }
+  const statusSelect = $("#inventory-status-filter");
+  for (const [value, label] of STATUS_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    statusSelect.append(option);
+  }
 }
 
 function errorMessage(payload, fallback = "Não foi possível concluir a operação.") {
@@ -288,6 +331,7 @@ async function loadFeatures(forceFit = false) {
     const collection = await request("/api/v1/map-features?limit=5000");
     state.features = collection.features;
     renderFeatures();
+    renderInventory();
     $("#map-summary").textContent = state.features.length
       ? `${state.features.length} ativo${state.features.length === 1 ? "" : "s"} carregado${state.features.length === 1 ? "" : "s"}`
       : "Nenhum ativo cadastrado — comece adicionando um ponto no mapa";
@@ -305,6 +349,131 @@ function updateStats() {
   $("#stat-routes").textContent = count((f) => ["cable", "route"].includes(f.properties.feature_type));
   $("#stat-planned").textContent = count((f) => f.properties.status === "planned");
   $("#stat-total-label").textContent = state.features.length === 1 ? "ativo geográfico" : "ativos geográficos";
+}
+
+function statusLabel(value) {
+  return STATUS_OPTIONS.find(([status]) => status === value)?.[1] || value;
+}
+
+function inventoryDescription(properties) {
+  const description = properties.description || properties.notes || "";
+  return String(description).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function renderInventory() {
+  const body = $("#inventory-table-body");
+  if (!body) return;
+  const query = $("#inventory-search").value.trim().toLowerCase();
+  const type = $("#inventory-type-filter").value;
+  const status = $("#inventory-status-filter").value;
+  const filtered = state.features.filter((feature) => {
+    const properties = feature.properties;
+    const searchable = [
+      properties.name,
+      properties.feature_type,
+      properties.status,
+      properties.source_namespace,
+      properties.folder_path,
+      inventoryDescription(properties),
+    ].filter(Boolean).join(" ").toLowerCase();
+    return (!query || searchable.includes(query))
+      && (!type || properties.feature_type === type)
+      && (!status || properties.status === status);
+  });
+
+  body.replaceChildren(...filtered.map((feature) => {
+    const properties = feature.properties;
+    const row = document.createElement("tr");
+    const identityCell = document.createElement("td");
+    const identity = document.createElement("div");
+    identity.className = "inventory-identity";
+    const dot = document.createElement("span");
+    dot.className = "inventory-type-dot";
+    dot.style.background = properties.kml_style?.icon_color
+      || properties.kml_style?.line_color
+      || TYPE_COLORS[properties.feature_type]
+      || TYPE_COLORS.other;
+    const text = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = properties.name;
+    const description = document.createElement("small");
+    description.textContent = inventoryDescription(properties) || `ID ${feature.id}`;
+    text.append(name, description);
+    identity.append(dot, text);
+    identityCell.append(identity);
+
+    const typeCell = document.createElement("td");
+    typeCell.textContent = TYPE_LABELS[properties.feature_type] || properties.feature_type;
+    const statusCell = document.createElement("td");
+    const statusPill = document.createElement("span");
+    statusPill.className = `status-pill ${properties.status}`;
+    statusPill.textContent = statusLabel(properties.status);
+    statusCell.append(statusPill);
+    const capacityCell = document.createElement("td");
+    capacityCell.textContent = Number.isFinite(Number(properties.capacity))
+      && properties.capacity !== null && properties.capacity !== ""
+      ? Number(properties.capacity).toLocaleString("pt-BR")
+      : "—";
+    const originCell = document.createElement("td");
+    originCell.className = "inventory-origin";
+    originCell.textContent = properties.source_namespace || properties.folder_path || "Cadastro manual";
+    const actionCell = document.createElement("td");
+    const action = document.createElement("button");
+    action.className = "button ghost inventory-open";
+    action.type = "button";
+    action.textContent = "Ver no mapa";
+    action.addEventListener("click", () => openFeatureOnMap(feature));
+    actionCell.append(action);
+    row.append(identityCell, typeCell, statusCell, capacityCell, originCell, actionCell);
+    return row;
+  }));
+
+  $("#inventory-empty").classList.toggle("hidden", filtered.length > 0);
+  $("#inventory-result-count").textContent = `${filtered.length.toLocaleString("pt-BR")} resultado${filtered.length === 1 ? "" : "s"}`;
+  $("#inventory-total").textContent = state.features.length.toLocaleString("pt-BR");
+  $("#inventory-optical").textContent = state.features.filter((feature) =>
+    ["cto", "splice_box", "splitter", "olt", "dio"].includes(feature.properties.feature_type)
+  ).length.toLocaleString("pt-BR");
+  $("#inventory-routes").textContent = state.features.filter((feature) =>
+    ["cable", "route"].includes(feature.properties.feature_type)
+  ).length.toLocaleString("pt-BR");
+  $("#inventory-capacity").textContent = state.features.filter((feature) =>
+    feature.properties.capacity !== null && feature.properties.capacity !== undefined
+  ).length.toLocaleString("pt-BR");
+}
+
+function showView(view) {
+  if (!["map", "inventory"].includes(view)) return;
+  state.view = view;
+  $("#map-view").classList.toggle("hidden", view !== "map");
+  $("#inventory-view").classList.toggle("hidden", view !== "inventory");
+  $$(".nav-item[data-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === view);
+  });
+  $("#topbar-section").textContent = view === "map" ? "Mapa da rede" : "Inventário";
+  $("#topbar-title").textContent = view === "map" ? "Visão geográfica" : "Ativos da rede";
+  $("#feature-search").closest(".search-box").classList.toggle("hidden", view !== "map");
+  $("#refresh-button").setAttribute(
+    "aria-label", view === "map" ? "Atualizar mapa" : "Atualizar inventário",
+  );
+  $("#app-shell").classList.remove("menu-open");
+  if (view === "map") {
+    window.setTimeout(() => state.map?.invalidateSize(), 30);
+  } else {
+    renderInventory();
+  }
+}
+
+function openFeatureOnMap(feature) {
+  $("#feature-search").value = "";
+  renderFeatures();
+  showView("map");
+  selectFeature(feature);
+  const layer = state.layers.get(feature.id);
+  if (layer?.getLatLng) state.map.setView(layer.getLatLng(), Math.max(state.map.getZoom(), 17));
+  else if (layer?.getBounds && layer.getBounds().isValid()) {
+    state.map.fitBounds(layer.getBounds(), {padding: [100, 100], maxZoom: 17});
+  }
 }
 
 function selectFeature(feature) {
@@ -670,7 +839,8 @@ function wireEvents() {
   $("#login-form").addEventListener("submit", handleLogin);
   $("#setup-form").addEventListener("submit", handleSetup);
   $("#logout-button").addEventListener("click", () => logout());
-  $("#refresh-button").addEventListener("click", () => loadFeatures(true));
+  $("#refresh-button").addEventListener("click", () => loadFeatures(state.view === "map"));
+  $("#theme-toggle").addEventListener("click", toggleTheme);
   $("#feature-search").addEventListener("input", () => renderFeatures());
   $("#add-feature-button").addEventListener("click", () => $("#feature-dialog").showModal());
   $("#feature-create-form").addEventListener("submit", beginDrawing);
@@ -686,6 +856,10 @@ function wireEvents() {
   $("#kmz-preview-form").addEventListener("submit", previewKmz);
   $("#kmz-import-button").addEventListener("click", confirmKmzImport);
   $("#refresh-imports-button").addEventListener("click", loadImportHistory);
+  $("#inventory-search").addEventListener("input", renderInventory);
+  $("#inventory-type-filter").addEventListener("change", renderInventory);
+  $("#inventory-status-filter").addEventListener("change", renderInventory);
+  $("#inventory-map-button").addEventListener("click", () => showView("map"));
   $("#menu-button").addEventListener("click", () => $("#app-shell").classList.toggle("menu-open"));
   $$(".modal-close").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
   $$(".password-toggle").forEach((button) => button.addEventListener("click", () => {
@@ -694,8 +868,11 @@ function wireEvents() {
     button.setAttribute("aria-label", input.type === "password" ? "Mostrar senha" : "Ocultar senha");
   }));
   $$(".nav-item[data-view]").forEach((button) => button.addEventListener("click", () => {
-    if (button.dataset.view !== "map") toast("Este módulo será liberado em uma próxima etapa.");
-    $("#app-shell").classList.remove("menu-open");
+    if (["map", "inventory"].includes(button.dataset.view)) showView(button.dataset.view);
+    else {
+      toast("Este módulo será liberado em uma próxima etapa.");
+      $("#app-shell").classList.remove("menu-open");
+    }
   }));
   document.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -707,9 +884,11 @@ function wireEvents() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  applyTheme(preferredTheme());
   setStatusOptions($("#feature-status"));
   setStatusOptions($("#detail-status"));
   setStatusOptions($("#kmz-default-status"));
+  setInventoryFilters();
   wireEvents();
   showInitialScreen();
 });
