@@ -12,7 +12,7 @@
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.2.0`
+- Versão atual: `0.3.0`
 
 ## Entregue nesta fase
 
@@ -41,6 +41,11 @@
 - [x] Banco de testes isolado do banco de desenvolvimento.
 - [x] Interface inicial publicada no commit `ee20497`.
 - [x] Identidade visual ajustada à paleta Jhon Tech (`#051A2C`, `#008FFF`, `#17CEEC`, branco e `#7F91A6`).
+- [x] Importador KMZ administrativo com pré-visualização e histórico.
+- [x] IDs KML e namespaces usados para reimportação idempotente.
+- [x] Cores, estilos, descrições e hierarquia de pastas KML preservados.
+- [x] Proteções contra ZIP bomb, path traversal e XML malicioso.
+- [x] Limite de visualização ampliado para 5.000 elementos e consulta espacial otimizada sem N+1.
 
 ## Validação executada
 
@@ -49,8 +54,9 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface: 7 testes aprovados.
+- Testes da API/RBAC/interface/importação: 10 testes aprovados.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
+- KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Migration inicial aplicada, revertida e reaplicada com sucesso.
 - Porta 3000: não utilizada.
 
@@ -106,6 +112,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - Fundação containerizada, banco espacial, migrations, autenticação, RBAC, auditoria e CI implementados.
 - Desenvolvimento local validado em Ubuntu 26.04 sobre Docker Desktop no macOS.
 - Interface gráfica inicial implementada e validada visualmente com os papéis `admin` e `viewer`.
+- Importador KMZ v0.3.0 implementado e validado com a rede real fornecida.
 
 ## Próxima atualização prevista
 

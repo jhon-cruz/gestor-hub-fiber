@@ -38,8 +38,11 @@ def _snapshot(feature: MapFeature) -> dict[str, Any]:
     }
 
 
-def _geojson_feature(db: DbSession, feature: MapFeature) -> dict[str, Any]:
-    geometry_json = db.scalar(select(func.ST_AsGeoJSON(feature.geometry)))
+def _geojson_feature(
+    db: DbSession, feature: MapFeature, geometry_json: str | None = None
+) -> dict[str, Any]:
+    if geometry_json is None:
+        geometry_json = db.scalar(select(func.ST_AsGeoJSON(feature.geometry)))
     return {
         "type": "Feature",
         "id": str(feature.id),
@@ -52,15 +55,20 @@ def _geojson_feature(db: DbSession, feature: MapFeature) -> dict[str, Any]:
 def list_map_features(
     _: CurrentUser,
     db: DbSession,
-    limit: int = Query(default=200, ge=1, le=1000),
+    limit: int = Query(default=5000, ge=1, le=5000),
     offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
-    features = list(
-        db.scalars(select(MapFeature).order_by(MapFeature.created_at).limit(limit).offset(offset))
+    rows = db.execute(
+        select(MapFeature, func.ST_AsGeoJSON(MapFeature.geometry))
+        .order_by(MapFeature.created_at)
+        .limit(limit)
+        .offset(offset)
     )
     return {
         "type": "FeatureCollection",
-        "features": [_geojson_feature(db, feature) for feature in features],
+        "features": [
+            _geojson_feature(db, feature, geometry_json) for feature, geometry_json in rows
+        ],
     }
 
 

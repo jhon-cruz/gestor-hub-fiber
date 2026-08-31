@@ -8,6 +8,7 @@ pwdlib[argon2]==0.3.1
 PyJWT==2.13.0
 GeoAlchemy2==0.20.0
 python-multipart==0.0.22
+defusedxml==0.7.1
 pytest==9.1.1
 httpx2==2.12.0
 ruff==0.16.5

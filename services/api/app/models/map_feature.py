@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from geoalchemy2 import Geometry
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,11 +14,22 @@ from app.core.database import Base
 
 class MapFeature(Base):
     __tablename__ = "map_feature"
+    __table_args__ = (
+        Index("uq_map_feature_source", "source_namespace", "source_ref", unique=True),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fiberq_uuid: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), unique=True, nullable=True
     )
+    import_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("map_import.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_namespace: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_ref: Mapped[str | None] = mapped_column(String(160), nullable=True)
     feature_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")

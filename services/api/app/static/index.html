@@ -115,6 +115,7 @@
           <button class="nav-item active" data-view="map"><span class="nav-icon">⌁</span><span>Mapa da rede</span></button>
           <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span><small>em breve</small></button>
           <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
+          <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇧</span><span>Importar KMZ</span></button>
           <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
         </nav>
         <div class="sidebar-foot">
@@ -228,6 +229,60 @@
             <button class="button primary wide" type="submit">Criar usuário</button>
           </form>
         </div>
+      </section>
+    </dialog>
+
+    <dialog id="imports-dialog" class="modal wide-modal">
+      <section>
+        <header><div><p class="overline">Dados geográficos</p><h2>Importar arquivo KMZ</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="import-layout">
+          <form id="kmz-preview-form" class="import-form">
+            <label class="file-drop" for="kmz-file">
+              <span class="file-drop-icon">⇧</span>
+              <strong id="kmz-file-label">Selecione um arquivo .kmz</strong>
+              <small>Máximo de 20 MB e 5.000 elementos</small>
+              <input id="kmz-file" type="file" accept=".kmz,application/vnd.google-earth.kmz" required>
+            </label>
+            <div class="form-grid compact-grid">
+              <label><span>Identificador da origem</span><input id="kmz-namespace" maxlength="120" placeholder="ex.: rede-pg-on" required></label>
+              <label><span>Status inicial</span><select id="kmz-default-status"></select></label>
+            </div>
+            <p class="field-hint">O identificador mantém reimportações do mesmo projeto sem duplicar elementos. As cores e descrições originais serão preservadas.</p>
+            <p id="kmz-error" class="form-error" role="alert"></p>
+            <button class="button primary wide" type="submit">Analisar arquivo</button>
+          </form>
+
+          <section id="kmz-empty-state" class="import-empty-state">
+            <span class="file-drop-icon">⌁</span>
+            <h3>Importação assistida</h3>
+            <ol>
+              <li>O arquivo é validado sem alterar o mapa.</li>
+              <li>Você confere tipos, quantidades e possíveis atualizações.</li>
+              <li>A confirmação grava o lote completo com auditoria.</li>
+            </ol>
+            <small>Reimportações com os mesmos IDs atualizam os elementos existentes sem criar cópias.</small>
+          </section>
+
+          <section id="kmz-preview" class="import-preview hidden" aria-live="polite">
+            <div class="preview-heading"><div><p class="overline">Pré-visualização</p><h3 id="kmz-preview-name">—</h3></div><span id="kmz-preview-badge" class="role-badge">Pronto</span></div>
+            <div class="preview-stats">
+              <div><small>Elementos</small><strong id="kmz-total">0</strong></div>
+              <div><small>Novos</small><strong id="kmz-new">0</strong></div>
+              <div><small>Atualizações</small><strong id="kmz-updates">0</strong></div>
+            </div>
+            <div>
+              <h4>Conteúdo identificado</h4>
+              <div id="kmz-breakdown" class="breakdown-list"></div>
+            </div>
+            <div id="kmz-warning-box" class="warning-box hidden"><strong>Avisos da análise</strong><ul id="kmz-warnings"></ul></div>
+            <p class="dialog-note">A confirmação grava todo o lote em uma única transação auditada. Se ocorrer um erro, nenhuma alteração parcial será mantida.</p>
+            <button id="kmz-import-button" class="button primary wide" type="button">Confirmar importação</button>
+          </section>
+        </div>
+        <section class="import-history-section">
+          <div class="section-title"><h3>Importações recentes</h3><button id="refresh-imports-button" class="icon-button" type="button" aria-label="Atualizar histórico">↻</button></div>
+          <div id="imports-history" class="imports-history"><span class="field-hint">Nenhuma importação registrada.</span></div>
+        </section>
       </section>
     </dialog>
   </body>

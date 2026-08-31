@@ -8,6 +8,7 @@ from app.core.database import SessionLocal
 from app.main import app
 from app.models.audit import AuditLog
 from app.models.map_feature import MapFeature
+from app.models.map_import import MapImport
 from app.models.user import User, UserRole
 from app.services.security import hash_password
 
@@ -17,6 +18,7 @@ def clean_database():
     with SessionLocal.begin() as db:
         db.execute(delete(AuditLog))
         db.execute(delete(MapFeature))
+        db.execute(delete(MapImport))
         db.execute(delete(User))
         db.add_all(
             [

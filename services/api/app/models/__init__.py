@@ -2,6 +2,7 @@
 
 from app.models.audit import AuditLog
 from app.models.map_feature import MapFeature
+from app.models.map_import import MapImport
 from app.models.user import User, UserRole
 
-__all__ = ["AuditLog", "MapFeature", "User", "UserRole"]
+__all__ = ["AuditLog", "MapFeature", "MapImport", "User", "UserRole"]

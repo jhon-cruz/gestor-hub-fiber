@@ -13,6 +13,7 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 - papéis `admin` e `viewer`;
 - leitura de feições para ambos os papéis;
 - criação, edição e exclusão de feições somente por administradores;
+- importação KMZ com pré-visualização, auditoria e reimportação sem duplicidade;
 - auditoria das alterações de mapa;
 - criação do primeiro administrador pela própria interface;
 - FiberQ 1.4.0 preservado como submódulo upstream enquanto o fork GitHub é concluído.
@@ -46,7 +47,7 @@ Não existe cadastro público. Somente uma instalação vazia permite criar o pr
 
 Consulte [THIRD_PARTY.md](THIRD_PARTY.md) e a documentação em [docs/discovery](docs/discovery/).
 
-Guias adicionais: [desenvolvimento local](docs/development.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
+Guias adicionais: [desenvolvimento local](docs/development.md), [importação KMZ](docs/importing-kmz.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
 
 ## Licença
 

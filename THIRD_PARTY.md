@@ -30,3 +30,11 @@ As alterações próprias devem ficar fora do submódulo sempre que possível. A
 - Política de tiles: <https://operations.osmfoundation.org/policies/tiles/>
 
 Os tiles públicos são adequados somente ao desenvolvimento e uso interativo moderado, sem download em massa. Antes de produção será definido um provedor com SLA ou uma infraestrutura própria.
+
+## defusedxml
+
+- Projeto: defusedxml
+- Versão: `0.7.1`
+- Site: <https://pypi.org/project/defusedxml/>
+- Licença: Python Software Foundation License
+- Uso: análise defensiva do XML contido em arquivos KMZ/KML.

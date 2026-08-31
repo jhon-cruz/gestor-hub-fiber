@@ -16,6 +16,9 @@ const TYPE_LABELS = {
   splitter: "Splitter",
   cable: "Cabo óptico",
   route: "Rota planejada",
+  olt: "OLT",
+  dio: "DIO",
+  area: "Área",
   other: "Outro",
 };
 
@@ -27,6 +30,9 @@ const TYPE_COLORS = {
   cable: "#00a9db",
   route: "#006fc7",
   other: "#607a92",
+  olt: "#17ceec",
+  dio: "#051a2c",
+  area: "#4f86c6",
 };
 
 const state = {
@@ -40,6 +46,8 @@ const state = {
   draw: null,
   draftLayer: null,
   hasFitBounds: false,
+  importFile: null,
+  importPreview: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -74,7 +82,11 @@ function translateError(message) {
 async function request(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (state.token && options.auth !== false) headers.set("Authorization", `Bearer ${state.token}`);
-  if (options.body && !(options.body instanceof URLSearchParams)) headers.set("Content-Type", "application/json");
+  if (
+    options.body
+    && !(options.body instanceof URLSearchParams)
+    && !(options.body instanceof FormData)
+  ) headers.set("Content-Type", "application/json");
   const response = await fetch(path, {...options, headers});
   if (response.status === 401 && options.auth !== false) {
     logout(false);
@@ -228,12 +240,14 @@ function initializeMap() {
 
 function layerStyle(feature) {
   const type = feature.properties.feature_type;
-  const color = TYPE_COLORS[type] || TYPE_COLORS.other;
+  const color = feature.properties.kml_style?.line_color || TYPE_COLORS[type] || TYPE_COLORS.other;
   return {color, fillColor: color, weight: 4, opacity: .9, fillOpacity: .2};
 }
 
 function pointLayer(feature, latlng) {
-  const color = TYPE_COLORS[feature.properties.feature_type] || TYPE_COLORS.other;
+  const color = feature.properties.kml_style?.icon_color
+    || TYPE_COLORS[feature.properties.feature_type]
+    || TYPE_COLORS.other;
   return L.circleMarker(latlng, {
     radius: feature.properties.feature_type === "cto" ? 9 : 7,
     color: "#ffffff",
@@ -271,7 +285,7 @@ async function loadFeatures(forceFit = false) {
   $("#map-loading").classList.remove("hidden");
   if (forceFit) state.hasFitBounds = false;
   try {
-    const collection = await request("/api/v1/map-features?limit=1000");
+    const collection = await request("/api/v1/map-features?limit=5000");
     state.features = collection.features;
     renderFeatures();
     $("#map-summary").textContent = state.features.length
@@ -489,6 +503,169 @@ async function createUser(event) {
   }
 }
 
+function normalizeImportNamespace(filename) {
+  return filename
+    .replace(/\.kmz$/i, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^[-._]+|[-._]+$/g, "")
+    .slice(0, 120);
+}
+
+function handleKmzFile(event) {
+  const [file] = event.currentTarget.files;
+  state.importFile = file || null;
+  state.importPreview = null;
+  $("#kmz-preview").classList.add("hidden");
+  $("#kmz-empty-state").classList.remove("hidden");
+  $("#kmz-error").textContent = "";
+  if (!file) {
+    $("#kmz-file-label").textContent = "Selecione um arquivo .kmz";
+    return;
+  }
+  $("#kmz-file-label").textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+  $("#kmz-namespace").value = normalizeImportNamespace(file.name);
+}
+
+function importFormData() {
+  const data = new FormData();
+  data.append("file", state.importFile);
+  data.append("source_namespace", $("#kmz-namespace").value.trim());
+  data.append("default_status", $("#kmz-default-status").value);
+  return data;
+}
+
+function renderImportPreview(preview) {
+  state.importPreview = preview;
+  $("#kmz-preview-name").textContent = preview.filename;
+  $("#kmz-total").textContent = preview.feature_count.toLocaleString("pt-BR");
+  $("#kmz-new").textContent = preview.new_count.toLocaleString("pt-BR");
+  $("#kmz-updates").textContent = preview.update_count.toLocaleString("pt-BR");
+  const badge = $("#kmz-preview-badge");
+  badge.textContent = preview.already_imported ? "Já importado" : "Pronto";
+  badge.classList.toggle("viewer", preview.already_imported);
+
+  const breakdown = $("#kmz-breakdown");
+  breakdown.replaceChildren(...Object.entries(preview.type_counts).map(([type, count]) => {
+    const item = document.createElement("span");
+    item.className = "breakdown-item";
+    const label = document.createTextNode(`${TYPE_LABELS[type] || type} `);
+    const value = document.createElement("strong");
+    value.textContent = count.toLocaleString("pt-BR");
+    item.append(label, value);
+    return item;
+  }));
+
+  const warningBox = $("#kmz-warning-box");
+  warningBox.classList.toggle("hidden", !preview.warnings.length);
+  $("#kmz-warnings").replaceChildren(...preview.warnings.slice(0, 8).map((warning) => {
+    const item = document.createElement("li");
+    item.textContent = warning.message;
+    return item;
+  }));
+  const importButton = $("#kmz-import-button");
+  importButton.disabled = preview.already_imported;
+  importButton.textContent = preview.already_imported
+    ? "Este arquivo já foi importado"
+    : `Confirmar importação de ${preview.feature_count.toLocaleString("pt-BR")} elementos`;
+  $("#kmz-preview").classList.remove("hidden");
+  $("#kmz-empty-state").classList.add("hidden");
+}
+
+async function previewKmz(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#kmz-error").textContent = "";
+  if (!state.importFile) {
+    $("#kmz-error").textContent = "Selecione um arquivo KMZ.";
+    return;
+  }
+  if (state.importFile.size > 20 * 1024 * 1024) {
+    $("#kmz-error").textContent = "O arquivo excede o limite de 20 MB.";
+    return;
+  }
+  setBusy(form, true);
+  try {
+    const preview = await request("/api/v1/imports/kmz/preview", {
+      method: "POST",
+      body: importFormData(),
+    });
+    renderImportPreview(preview);
+  } catch (error) {
+    $("#kmz-error").textContent = error.message;
+    $("#kmz-preview").classList.add("hidden");
+    $("#kmz-empty-state").classList.remove("hidden");
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+async function confirmKmzImport() {
+  if (!state.importFile || !state.importPreview || state.importPreview.already_imported) return;
+  const button = $("#kmz-import-button");
+  button.disabled = true;
+  const label = button.textContent;
+  button.textContent = "Importando e validando geometrias...";
+  try {
+    const result = await request("/api/v1/imports/kmz", {
+      method: "POST",
+      body: importFormData(),
+    });
+    button.textContent = "Importação concluída";
+    $("#kmz-preview-badge").textContent = "Importado";
+    toast(
+      `${result.created_count.toLocaleString("pt-BR")} novos e ${result.updated_count.toLocaleString("pt-BR")} atualizados.`,
+    );
+    await Promise.all([loadFeatures(true), loadImportHistory()]);
+    if (state.importPreview.bounds && state.map) {
+      const [west, south, east, north] = state.importPreview.bounds;
+      state.map.fitBounds([[south, west], [north, east]], {padding: [80, 80]});
+    }
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = label;
+    toast(error.message, "error");
+  }
+}
+
+async function openImports() {
+  if (state.user.role !== "admin") return;
+  $("#imports-dialog").showModal();
+  await loadImportHistory();
+}
+
+async function loadImportHistory() {
+  const container = $("#imports-history");
+  container.innerHTML = '<span class="field-hint">Carregando histórico...</span>';
+  try {
+    const imports = await request("/api/v1/imports");
+    if (!imports.length) {
+      container.innerHTML = '<span class="field-hint">Nenhuma importação registrada.</span>';
+      return;
+    }
+    container.replaceChildren(...imports.map((item) => {
+      const row = document.createElement("article");
+      row.className = "import-history-row";
+      const identity = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = item.filename;
+      const meta = document.createElement("small");
+      meta.textContent = `${item.source_namespace} · ${new Date(item.created_at).toLocaleString("pt-BR")}`;
+      identity.append(name, meta);
+      const total = document.createElement("span");
+      total.textContent = `${item.feature_count.toLocaleString("pt-BR")} elementos`;
+      const result = document.createElement("span");
+      result.textContent = `+${item.created_count} / ↻${item.updated_count}`;
+      row.append(identity, total, result);
+      return row;
+    }));
+  } catch (error) {
+    container.textContent = error.message;
+  }
+}
+
 function wireEvents() {
   $("#login-form").addEventListener("submit", handleLogin);
   $("#setup-form").addEventListener("submit", handleSetup);
@@ -503,7 +680,12 @@ function wireEvents() {
   $("#delete-feature-button").addEventListener("click", deleteSelectedFeature);
   $("#close-detail-button").addEventListener("click", () => $("#feature-panel").classList.add("hidden"));
   $("#users-nav").addEventListener("click", openUsers);
+  $("#imports-nav").addEventListener("click", openImports);
   $("#user-create-form").addEventListener("submit", createUser);
+  $("#kmz-file").addEventListener("change", handleKmzFile);
+  $("#kmz-preview-form").addEventListener("submit", previewKmz);
+  $("#kmz-import-button").addEventListener("click", confirmKmzImport);
+  $("#refresh-imports-button").addEventListener("click", loadImportHistory);
   $("#menu-button").addEventListener("click", () => $("#app-shell").classList.toggle("menu-open"));
   $$(".modal-close").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
   $$(".password-toggle").forEach((button) => button.addEventListener("click", () => {
@@ -527,6 +709,7 @@ function wireEvents() {
 document.addEventListener("DOMContentLoaded", () => {
   setStatusOptions($("#feature-status"));
   setStatusOptions($("#detail-status"));
+  setStatusOptions($("#kmz-default-status"));
   wireEvents();
   showInitialScreen();
 });

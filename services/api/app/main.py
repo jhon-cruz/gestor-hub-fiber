@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app import __version__
 from app.api.dependencies import DbSession
-from app.api.routes import auth, map_features, users
+from app.api.routes import auth, imports, map_features, users
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(map_features.router, prefix="/api/v1")
+app.include_router(imports.router, prefix="/api/v1")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
