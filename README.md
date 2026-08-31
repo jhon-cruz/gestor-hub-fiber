@@ -7,12 +7,14 @@ Plataforma GIS FTTx multiusuário integrada a ERPs de provedores, derivada e int
 O projeto está na fase de fundação. A primeira implementação inclui:
 
 - API FastAPI em Ubuntu 26.04;
+- interface web responsiva com mapa interativo;
 - PostgreSQL 18 + PostGIS 3.6;
 - autenticação por login e senha com token de curta duração;
 - papéis `admin` e `viewer`;
 - leitura de feições para ambos os papéis;
 - criação, edição e exclusão de feições somente por administradores;
 - auditoria das alterações de mapa;
+- criação do primeiro administrador pela própria interface;
 - FiberQ 1.4.0 preservado como submódulo upstream enquanto o fork GitHub é concluído.
 
 ## Desenvolvimento local no macOS
@@ -22,10 +24,9 @@ Requisitos: Docker Desktop e Docker Compose.
 ```bash
 make init-env
 make dev
-make create-admin
 ```
 
-A API ficará em <http://localhost:3030>, a documentação OpenAPI em <http://localhost:3030/docs> e o PostgreSQL permanecerá acessível somente pela rede interna do Compose.
+A interface ficará em <http://localhost:3030>, a documentação OpenAPI em <http://localhost:3030/docs> e o PostgreSQL permanecerá acessível somente pela rede interna do Compose. No primeiro acesso, a tela inicial solicita a criação do administrador. A alternativa por terminal continua disponível com `make create-admin`.
 
 Para executar os testes:
 
@@ -35,7 +36,7 @@ make test
 
 ## Autorização
 
-Não existe cadastro público. O primeiro administrador é criado pela CLI; depois, somente administradores podem criar usuários por `POST /api/v1/users`. Usuários `viewer` podem autenticar e consultar o mapa, mas recebem HTTP 403 em toda operação de alteração.
+Não existe cadastro público. Somente uma instalação vazia permite criar o primeiro administrador; depois, somente administradores podem criar usuários pela interface ou por `POST /api/v1/users`. Usuários `viewer` podem autenticar e consultar o mapa, mas recebem HTTP 403 em toda operação de alteração.
 
 ## Repositórios
 

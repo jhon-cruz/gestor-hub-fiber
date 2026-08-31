@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#071f1c">
+    <title>Gestor Hub Fiber</title>
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    >
+    <link rel="stylesheet" href="/static/app.css">
+    <script
+      defer
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+    <main id="auth-screen" class="auth-screen">
+      <section class="auth-brand" aria-label="Apresentação do produto">
+        <div class="brand-mark large" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div>
+          <p class="eyebrow">Infraestrutura óptica em contexto</p>
+          <h1>Sua rede inteira.<br><em>Uma única visão.</em></h1>
+          <p class="auth-copy">
+            Inventário geográfico, operação multiusuário e integrações ERP em uma plataforma
+            construída para redes FTTx.
+          </p>
+        </div>
+        <div class="auth-metrics" aria-hidden="true">
+          <div><strong>GIS</strong><span>PostGIS nativo</span></div>
+          <div><strong>RBAC</strong><span>Acesso controlado</span></div>
+          <div><strong>26.04</strong><span>Ubuntu LTS</span></div>
+        </div>
+      </section>
+
+      <section class="auth-panel">
+        <div class="mobile-brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <strong>Gestor Hub Fiber</strong>
+        </div>
+
+        <form id="login-form" class="auth-card" autocomplete="on">
+          <header>
+            <span class="status-dot"></span>
+            <p class="overline">Acesso seguro</p>
+            <h2>Bem-vindo de volta</h2>
+            <p>Entre com suas credenciais para acessar a operação.</p>
+          </header>
+          <label>
+            <span>Usuário</span>
+            <input id="login-username" name="username" autocomplete="username" required>
+          </label>
+          <label>
+            <span>Senha</span>
+            <span class="password-field">
+              <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+              <button class="icon-button password-toggle" type="button" aria-label="Mostrar senha">◉</button>
+            </span>
+          </label>
+          <p id="login-error" class="form-error" role="alert"></p>
+          <button class="button primary wide" type="submit">
+            <span>Entrar no sistema</span><span aria-hidden="true">→</span>
+          </button>
+          <footer>Ambiente protegido · Sessão com tempo limitado</footer>
+        </form>
+
+        <form id="setup-form" class="auth-card hidden" autocomplete="off">
+          <header>
+            <span class="status-dot accent"></span>
+            <p class="overline">Primeiro acesso</p>
+            <h2>Crie o administrador</h2>
+            <p>Esta instalação está vazia. Defina a conta que administrará usuários e mapas.</p>
+          </header>
+          <label>
+            <span>Usuário administrador</span>
+            <input id="setup-username" name="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9._-]+" autocomplete="username" required>
+          </label>
+          <label>
+            <span>Senha</span>
+            <span class="password-field">
+              <input id="setup-password" name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+              <button class="icon-button password-toggle" type="button" aria-label="Mostrar senha">◉</button>
+            </span>
+          </label>
+          <label>
+            <span>Confirmar senha</span>
+            <input id="setup-confirm" name="confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+          </label>
+          <p class="field-hint">Use ao menos 12 caracteres. A senha nunca será armazenada em texto aberto.</p>
+          <p id="setup-error" class="form-error" role="alert"></p>
+          <button class="button primary wide" type="submit">Criar administrador e entrar</button>
+        </form>
+      </section>
+    </main>
+
+    <main id="app-shell" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>Gestor Hub</strong><small>Fiber</small></div>
+        </div>
+        <nav aria-label="Navegação principal">
+          <button class="nav-item active" data-view="map"><span class="nav-icon">⌁</span><span>Mapa da rede</span></button>
+          <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span><small>em breve</small></button>
+          <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
+          <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="system-state"><span></span><div><strong>Sistema operacional</strong><small>API e banco conectados</small></div></div>
+          <button id="logout-button" class="nav-item"><span class="nav-icon">↪</span><span>Sair</span></button>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <button id="menu-button" class="icon-button menu-button" aria-label="Abrir menu">☰</button>
+          <div>
+            <p class="breadcrumb">Operação / <strong>Mapa da rede</strong></p>
+            <h2>Visão geográfica</h2>
+          </div>
+          <div class="topbar-actions">
+            <div class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input id="feature-search" type="search" placeholder="Buscar ativo..." aria-label="Buscar ativo">
+              <kbd>⌘ K</kbd>
+            </div>
+            <button id="refresh-button" class="icon-button" aria-label="Atualizar mapa">↻</button>
+            <div class="user-chip">
+              <div id="user-avatar" class="avatar">A</div>
+              <div><strong id="current-username">—</strong><small id="current-role">—</small></div>
+            </div>
+          </div>
+        </header>
+
+        <section class="map-stage">
+          <div id="map" aria-label="Mapa interativo da rede"></div>
+
+          <div class="map-overlay map-heading">
+            <p class="overline">Território operacional</p>
+            <h1>Mapa da rede</h1>
+            <p id="map-summary">Carregando ativos geográficos...</p>
+          </div>
+
+          <section class="stats-grid" aria-label="Resumo do inventário">
+            <article><span class="stat-icon green">●</span><div><small>Ativos no mapa</small><strong id="stat-total">0</strong></div><em id="stat-total-label">sincronizado</em></article>
+            <article><span class="stat-icon blue">◆</span><div><small>CTOs</small><strong id="stat-ctos">0</strong></div><em>distribuição</em></article>
+            <article><span class="stat-icon amber">━</span><div><small>Cabos e rotas</small><strong id="stat-routes">0</strong></div><em>traçado óptico</em></article>
+            <article><span class="stat-icon violet">◈</span><div><small>Planejados</small><strong id="stat-planned">0</strong></div><em>aguardando execução</em></article>
+          </section>
+
+          <div class="map-controls admin-only">
+            <button id="add-feature-button" class="button primary"><span aria-hidden="true">＋</span> Adicionar ativo</button>
+          </div>
+
+          <div id="draw-toolbar" class="draw-toolbar hidden">
+            <div><strong id="draw-title">Desenhe no mapa</strong><small id="draw-help">Clique para adicionar pontos.</small></div>
+            <button id="finish-draw-button" class="button primary small">Concluir</button>
+            <button id="cancel-draw-button" class="button ghost small">Cancelar</button>
+          </div>
+
+          <aside id="feature-panel" class="detail-panel hidden" aria-label="Detalhes do ativo">
+            <header>
+              <div><p class="overline">Ativo selecionado</p><h3 id="detail-title">—</h3></div>
+              <button id="close-detail-button" class="icon-button" aria-label="Fechar detalhes">×</button>
+            </header>
+            <form id="feature-edit-form">
+              <label><span>Nome</span><input id="detail-name" required maxlength="160"></label>
+              <label><span>Tipo</span><input id="detail-type" readonly></label>
+              <label><span>Status</span><select id="detail-status"></select></label>
+              <div class="detail-meta"><span>Revisão</span><strong id="detail-revision">—</strong></div>
+              <div class="detail-meta"><span>ID</span><code id="detail-id">—</code></div>
+              <div class="admin-only panel-actions">
+                <button class="button primary wide" type="submit">Salvar alterações</button>
+                <button id="delete-feature-button" class="button danger wide" type="button">Excluir ativo</button>
+              </div>
+              <p id="viewer-notice" class="viewer-notice">Modo de consulta: alterações são restritas a administradores.</p>
+            </form>
+          </aside>
+
+          <div id="map-loading" class="map-loading"><span class="spinner"></span> Carregando mapa...</div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="feature-dialog" class="modal">
+      <form id="feature-create-form" method="dialog">
+        <header><div><p class="overline">Novo elemento</p><h2>Adicionar ativo ao mapa</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label class="span-2"><span>Nome do ativo</span><input id="feature-name" maxlength="160" placeholder="Ex.: CTO Jardim Norte 01" required></label>
+          <label><span>Tipo</span><select id="feature-type"><option value="cto">CTO</option><option value="pole">Poste</option><option value="splice_box">Caixa de emenda</option><option value="splitter">Splitter</option><option value="cable">Cabo óptico</option><option value="route">Rota planejada</option><option value="other">Outro</option></select></label>
+          <label><span>Status</span><select id="feature-status"></select></label>
+          <label><span>Geometria</span><select id="geometry-type"><option value="Point">Ponto</option><option value="LineString">Linha</option><option value="Polygon">Área</option></select></label>
+          <label><span>Capacidade</span><input id="feature-capacity" type="number" min="0" step="1" placeholder="Opcional"></label>
+          <label class="span-2"><span>Observações</span><textarea id="feature-notes" rows="3" maxlength="500" placeholder="Informações operacionais opcionais"></textarea></label>
+        </div>
+        <p class="dialog-note">Após continuar, marque a posição ou o traçado diretamente no mapa.</p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Continuar para o mapa →</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="users-dialog" class="modal wide-modal">
+      <section>
+        <header><div><p class="overline">Administração</p><h2>Usuários e permissões</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="users-layout">
+          <div>
+            <h3>Contas cadastradas</h3>
+            <div id="users-list" class="users-list"><span class="spinner"></span></div>
+          </div>
+          <form id="user-create-form" class="create-user-card">
+            <h3>Novo usuário</h3>
+            <label><span>Usuário</span><input id="new-username" minlength="3" maxlength="64" pattern="[A-Za-z0-9._-]+" required></label>
+            <label><span>Senha provisória</span><input id="new-password" type="password" minlength="12" maxlength="128" required></label>
+            <label><span>Nível de acesso</span><select id="new-role"><option value="viewer">Somente visualização</option><option value="admin">Administrador</option></select></label>
+            <p class="field-hint">Administradores podem modificar mapas e cadastrar outras contas.</p>
+            <p id="user-create-error" class="form-error" role="alert"></p>
+            <button class="button primary wide" type="submit">Criar usuário</button>
+          </form>
+        </div>
+      </section>
+    </dialog>
+  </body>
+</html>

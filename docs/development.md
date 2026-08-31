@@ -25,11 +25,14 @@ curl http://localhost:3030/health
 
 Interfaces disponíveis:
 
+- Interface web: <http://localhost:3030>
 - OpenAPI: <http://localhost:3030/docs>
 - Healthcheck: <http://localhost:3030/health>
 - Readiness: <http://localhost:3030/ready>
 
 ## Primeiro administrador
+
+Abra <http://localhost:3030> e preencha o formulário de primeiro acesso. Esse formulário só é aceito enquanto o banco não possui nenhuma conta. Como alternativa administrativa local:
 
 ```bash
 make create-admin
@@ -43,7 +46,7 @@ A senha é lida sem eco e armazenada somente como hash Argon2. Não passe senhas
 make test
 ```
 
-Os testes usam o PostGIS local e apagam apenas os registros criados pela própria suíte. Para inspecionar logs:
+Os testes usam o banco separado `gestor_hub_fiber_test`; nunca limpam contas ou mapas do banco de desenvolvimento. Para inspecionar logs:
 
 ```bash
 make logs

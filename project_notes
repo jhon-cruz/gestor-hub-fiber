@@ -5,13 +5,14 @@
 ## Status geral
 
 - Fase atual: Fase 1 — Fundação técnica
-- Estado: ambiente local operacional e primeira base publicada
+- Estado: interface gráfica inicial operacional no ambiente local
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
+- Versão atual: `0.2.0`
 
 ## Entregue nesta fase
 
@@ -33,6 +34,11 @@
 - [x] Testes automatizados de saúde, autenticação e autorização.
 - [x] Workflow de CI preparado para API no Ubuntu 26.04 e matriz FiberQ/QGIS.
 - [x] Documentação de desenvolvimento, segurança e estratégia do fork criada.
+- [x] Interface web responsiva com login, primeiro acesso e mapa Leaflet criada.
+- [x] Desenho de pontos, linhas e áreas integrado ao PostGIS.
+- [x] Painel de detalhes com edição/exclusão exclusiva para administradores.
+- [x] Gestão visual de usuários exclusiva para administradores.
+- [x] Banco de testes isolado do banco de desenvolvimento.
 
 ## Validação executada
 
@@ -41,7 +47,8 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC: 5 testes aprovados.
+- Testes da API/RBAC/interface: 7 testes aprovados.
+- Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - Migration inicial aplicada, revertida e reaplicada com sucesso.
 - Porta 3000: não utilizada.
 
@@ -54,7 +61,7 @@
 | Criar/editar/excluir feições | sim | não |
 | Criar usuários | sim | não |
 
-Não existe usuário ou senha padrão versionado. O primeiro administrador deve ser criado interativamente com `make create-admin`.
+Não existe usuário ou senha padrão versionado. O primeiro administrador pode ser criado na tela inicial ou interativamente com `make create-admin`.
 
 ## Pendências e próximos marcos
 
@@ -62,7 +69,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador deve 
 - [ ] Alterar a URL do submódulo de upstream para o fork e manter o upstream como fonte de atualização.
 - [x] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber` (commit inicial `bdecf27`).
 - [ ] Executar a matriz FiberQ nos containers QGIS 3/Qt5 e QGIS 4/Qt6 na CI.
-- [ ] Criar a interface web multiusuário para acompanhamento no navegador.
+- [x] Criar a interface web multiusuário para acompanhamento no navegador.
 - [ ] Implementar o modelo óptico completo: fibras, fusões, splitters, CTOs e portas.
 - [ ] Obter documentação/ambientes de homologação do SGP e IXC.
 - [ ] Implementar conectores SGP e IXC sem inventar endpoints não documentados.
@@ -96,7 +103,8 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador deve 
 - Fase 1 iniciada.
 - Fundação containerizada, banco espacial, migrations, autenticação, RBAC, auditoria e CI implementados.
 - Desenvolvimento local validado em Ubuntu 26.04 sobre Docker Desktop no macOS.
+- Interface gráfica inicial implementada e validada visualmente com os papéis `admin` e `viewer`.
 
 ## Próxima atualização prevista
 
-Registrar a criação do fork e a publicação inicial; depois iniciar a interface web e o domínio óptico do MVP.
+Publicar a interface inicial; depois concluir o fork e iniciar o domínio óptico completo do MVP.

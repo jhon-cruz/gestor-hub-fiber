@@ -29,6 +29,7 @@ COPY pyproject.toml ./pyproject.toml
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 COPY app ./app
+COPY scripts ./scripts
 COPY tests ./tests
 
 RUN useradd --create-home --uid 10001 appuser \

@@ -12,8 +12,9 @@ As verificações são feitas no servidor em cada requisição. Ocultar botões 
 ## Contas
 
 - Não existe autocadastro público.
-- O primeiro administrador é criado pela CLI local.
-- Novas contas são criadas por administradores em `POST /api/v1/users`.
+- Em uma instalação vazia, a interface permite criar exatamente o primeiro administrador. Um bloqueio transacional no PostgreSQL evita dois bootstraps simultâneos; depois disso, o endpoint responde HTTP 409.
+- A CLI local `make create-admin` permanece disponível como alternativa operacional.
+- Novas contas são criadas por administradores pela interface ou em `POST /api/v1/users`.
 - Senhas exigem no mínimo 12 caracteres e são armazenadas com Argon2.
 - Tokens JWT usam HS256, expiração curta e segredo fornecido por variável de ambiente.
 - O papel presente no token não é usado isoladamente: a API relê o usuário ativo no banco.

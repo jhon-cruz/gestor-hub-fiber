@@ -1,7 +1,11 @@
 """Gestor Hub Fiber ASGI application."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app import __version__
@@ -10,6 +14,7 @@ from app.api.routes import auth, map_features, users
 from app.core.config import get_settings
 
 settings = get_settings()
+static_dir = Path(__file__).resolve().parent / "static"
 
 app = FastAPI(
     title="Gestor Hub Fiber API",
@@ -27,6 +32,28 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(map_features.router, prefix="/api/v1")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com; "
+        "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    )
+    return response
+
+
+@app.get("/", include_in_schema=False)
+def interface() -> FileResponse:
+    return FileResponse(static_dir / "index.html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/health", tags=["operations"])

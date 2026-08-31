@@ -69,9 +69,12 @@ services:
     command:
       - sh
       - -c
-      - ruff format --check app tests alembic && ruff check app tests alembic && python -m pytest -q
+      - python scripts/prepare_test_database.py && alembic upgrade head && ruff format --check app tests alembic scripts && ruff check app tests alembic scripts && python -m pytest -q
     environment:
       <<: *api-environment
+      APP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gestor_hub}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}@db:5432/${POSTGRES_DB:-gestor_hub_fiber}_test
+      TEST_ADMIN_DATABASE_URL: postgresql://${POSTGRES_USER:-gestor_hub}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}@db:5432/postgres
+      POSTGRES_TEST_DATABASE: ${POSTGRES_DB:-gestor_hub_fiber}_test
       PYTHONPATH: /workspace
     depends_on:
       db:
@@ -81,6 +84,7 @@ services:
     volumes:
       - ./services/api/app:/workspace/app:ro
       - ./services/api/tests:/workspace/tests:ro
+      - ./services/api/scripts:/workspace/scripts:ro
 
 volumes:
   postgres_data:
