@@ -5,7 +5,7 @@
 ## Status geral
 
 - Fase atual: Fase 1 — Fundação técnica
-- Estado: interface gráfica inicial operacional no ambiente local
+- Estado: interface gráfica inicial operacional e publicada
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
@@ -39,6 +39,7 @@
 - [x] Painel de detalhes com edição/exclusão exclusiva para administradores.
 - [x] Gestão visual de usuários exclusiva para administradores.
 - [x] Banco de testes isolado do banco de desenvolvimento.
+- [x] Interface inicial publicada no commit `ee20497`.
 
 ## Validação executada
 
@@ -107,4 +108,4 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 
 ## Próxima atualização prevista
 
-Publicar a interface inicial; depois concluir o fork e iniciar o domínio óptico completo do MVP.
+Concluir o fork; depois iniciar o domínio óptico completo do MVP.
