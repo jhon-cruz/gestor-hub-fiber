@@ -1,0 +1,8 @@
+.git
+.gitmodules
+.env
+.venv
+**/__pycache__
+**/.pytest_cache
+vendor
+docs

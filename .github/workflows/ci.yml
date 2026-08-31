@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-ubuntu-2604:
+    name: API on Ubuntu 26.04 container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate isolated test secrets
+        run: make init-env
+
+      - name: Validate Compose
+        run: docker compose config --quiet
+
+      - name: Run migrations and API authorization tests
+        run: make test
+
+      - name: Verify Ubuntu and service health
+        run: |
+          make dev
+          docker compose exec -T api grep '^PRETTY_NAME="Ubuntu 26.04 LTS"' /etc/os-release
+          curl --fail --retry 10 --retry-delay 2 http://127.0.0.1:3030/ready
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes
+
+  fiberq-upstream:
+    name: FiberQ ${{ matrix.qgis }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        qgis: ["3.44-trixie", "4.2-trixie"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run upstream quality gate
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/vendor/fiberq:/src" \
+            -w /src \
+            -e QT_QPA_PLATFORM=offscreen \
+            -e PIP_FLAGS=--break-system-packages \
+            "qgis/qgis:${{ matrix.qgis }}" \
+            bash -c "apt-get update -qq && apt-get install -y --no-install-recommends make >/dev/null && make deps && make lint && make test"

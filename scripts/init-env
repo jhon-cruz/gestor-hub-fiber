@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+if [ -e .env ]; then
+    echo ".env já existe; nenhuma alteração foi feita." >&2
+    exit 1
+fi
+
+umask 077
+db_password=$(openssl rand -hex 24)
+jwt_secret=$(openssl rand -hex 32)
+
+printf '%s\n' \
+    'COMPOSE_PROJECT_NAME=gestor-hub-fiber' \
+    'APP_HTTP_PORT=3030' \
+    '' \
+    'POSTGRES_DB=gestor_hub_fiber' \
+    'POSTGRES_USER=gestor_hub' \
+    "POSTGRES_PASSWORD=${db_password}" \
+    '' \
+    "APP_JWT_SECRET=${jwt_secret}" \
+    'APP_ACCESS_TOKEN_MINUTES=30' \
+    'APP_CORS_ORIGINS=["http://localhost:3030"]' \
+    > .env
+
+echo ".env local criado com segredos aleatórios e permissão restrita."

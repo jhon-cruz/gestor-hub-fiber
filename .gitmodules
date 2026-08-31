@@ -1,0 +1,3 @@
+[submodule "vendor/fiberq"]
+	path = vendor/fiberq
+	url = https://github.com/vukovicvl/fiberq.git

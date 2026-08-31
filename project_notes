@@ -1,0 +1,102 @@
+# Project Notes — Gestor Hub Fiber
+
+Última atualização: 2026-08-31
+
+## Status geral
+
+- Fase atual: Fase 1 — Fundação técnica
+- Estado: ambiente local operacional e primeira base pronta para versionamento
+- Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
+- Produto: Gestor Hub Fiber
+- Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
+- Ambiente de desenvolvimento: macOS + Docker Desktop
+- Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
+- Endpoint local: `http://localhost:3030`
+
+## Entregue nesta fase
+
+- [x] Repositório Git local inicializado em `main` e remote `origin` configurado.
+- [x] Licença GPL-3.0-or-later e atribuições do FiberQ preservadas.
+- [x] FiberQ 1.4.0 incluído como submódulo em `vendor/fiberq`, fixado no commit de lançamento `07b8c12a628a5cc9641569ba3f8ca9ef867ce696`.
+- [x] Ambiente Compose criado sem usar a porta 3000.
+- [x] API FastAPI executando em container `linux/amd64` baseado em Ubuntu 26.04 LTS.
+- [x] API publicada somente em `127.0.0.1:3030` para desenvolvimento local.
+- [x] PostgreSQL 18 + PostGIS 3.6 isolado da rede do macOS, sem porta de banco publicada.
+- [x] Migrations Alembic criadas e validadas nos dois sentidos (`upgrade` e `downgrade`).
+- [x] Autenticação por usuário/senha, hash Argon2 e token JWT de curta duração.
+- [x] Papéis `admin` e `viewer` implementados.
+- [x] Cadastro público desabilitado; primeiro administrador criado por CLI.
+- [x] Apenas administradores podem criar usuários ou alterar feições do mapa.
+- [x] Administradores e visualizadores podem consultar feições.
+- [x] Auditoria de criação, alteração e exclusão de feições.
+- [x] Controle otimista de revisão para evitar sobrescrita silenciosa concorrente.
+- [x] Testes automatizados de saúde, autenticação e autorização.
+- [x] Workflow de CI preparado para API no Ubuntu 26.04 e matriz FiberQ/QGIS.
+- [x] Documentação de desenvolvimento, segurança e estratégia do fork criada.
+
+## Validação executada
+
+- Imagem-base confirmada: Ubuntu 26.04 LTS.
+- API: saudável em `http://localhost:3030/health`.
+- Readiness com banco: saudável em `http://localhost:3030/ready`.
+- Containers ativos: API e PostGIS com healthchecks aprovados.
+- Qualidade: `ruff format --check` e `ruff check` aprovados.
+- Testes da API/RBAC: 5 testes aprovados.
+- Migration inicial aplicada, revertida e reaplicada com sucesso.
+- Porta 3000: não utilizada.
+
+## Regras de autorização atuais
+
+| Operação | admin | viewer |
+|---|---:|---:|
+| Autenticar | sim | sim |
+| Consultar mapa | sim | sim |
+| Criar/editar/excluir feições | sim | não |
+| Criar usuários | sim | não |
+
+Não existe usuário ou senha padrão versionado. O primeiro administrador deve ser criado interativamente com `make create-admin`.
+
+## Pendências e próximos marcos
+
+- [ ] Criar o fork público `jhon-cruz/fiberq` no GitHub; a tela final está preparada e exige confirmação do proprietário.
+- [ ] Alterar a URL do submódulo de upstream para o fork e manter o upstream como fonte de atualização.
+- [ ] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber`.
+- [ ] Executar a matriz FiberQ nos containers QGIS 3/Qt5 e QGIS 4/Qt6 na CI.
+- [ ] Criar a interface web multiusuário para acompanhamento no navegador.
+- [ ] Implementar o modelo óptico completo: fibras, fusões, splitters, CTOs e portas.
+- [ ] Obter documentação/ambientes de homologação do SGP e IXC.
+- [ ] Implementar conectores SGP e IXC sem inventar endpoints não documentados.
+- [ ] Certificar instalação, backup, restauração, firewall e operação em uma VM/servidor Ubuntu Server 26.04 real.
+
+## Decisões e restrições vigentes
+
+- O Gestor Hub Fiber tem identidade própria e não será apresentado como produto oficial do FiberQ, SGP ou IXC.
+- Regras específicas de ERP permanecem fora do núcleo óptico.
+- Integrações usarão somente APIs oficialmente suportadas.
+- Sincronização começará somente leitura; escrita futura exigirá `dry-run`, feature flag e confirmação.
+- Segredos, senhas e dados pessoais não serão versionados nem registrados em logs ou fixtures.
+- O QGIS Desktop e seus plugins interativos permanecem nas estações; o servidor executa API, banco, workers e testes headless.
+- O container valida o userspace Ubuntu 26.04; kernel, systemd e firewall exigem homologação posterior em servidor/VM completa.
+
+## Referências produzidas
+
+- `docs/discovery/phase-0-initial-assessment.md`
+- `docs/discovery/ubuntu-26.04-compatibility.md`
+- `docs/development.md`
+- `docs/security/authentication-and-roles.md`
+- `docs/fiberq-fork.md`
+
+## Histórico resumido
+
+### 2026-08-31
+
+- Prompt mestre lido e Fase 0 concluída.
+- Upstream FiberQ auditado e estratégia de extensão/fork definida.
+- Nome e repositório do produto definidos.
+- Fase 1 iniciada.
+- Fundação containerizada, banco espacial, migrations, autenticação, RBAC, auditoria e CI implementados.
+- Desenvolvimento local validado em Ubuntu 26.04 sobre Docker Desktop no macOS.
+
+## Próxima atualização prevista
+
+Registrar a criação do fork e a publicação inicial; depois iniciar a interface web e o domínio óptico do MVP.
