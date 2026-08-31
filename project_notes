@@ -40,6 +40,7 @@
 - [x] Gestão visual de usuários exclusiva para administradores.
 - [x] Banco de testes isolado do banco de desenvolvimento.
 - [x] Interface inicial publicada no commit `ee20497`.
+- [x] Identidade visual ajustada à paleta Jhon Tech (`#051A2C`, `#008FFF`, `#17CEEC`, branco e `#7F91A6`).
 
 ## Validação executada
 

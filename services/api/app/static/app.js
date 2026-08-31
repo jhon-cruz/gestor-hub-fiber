@@ -20,13 +20,13 @@ const TYPE_LABELS = {
 };
 
 const TYPE_COLORS = {
-  cto: "#0a9e72",
-  pole: "#6f817d",
-  splice_box: "#3578e5",
-  splitter: "#7657d8",
-  cable: "#d99529",
-  route: "#2c7c70",
-  other: "#607873",
+  cto: "#008fff",
+  pole: "#7f91a6",
+  splice_box: "#17ceec",
+  splitter: "#4f86c6",
+  cable: "#00a9db",
+  route: "#006fc7",
+  other: "#607a92",
 };
 
 const state = {
