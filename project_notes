@@ -5,7 +5,7 @@
 ## Status geral
 
 - Fase atual: Fase 1 — Fundação técnica
-- Estado: ambiente local operacional e primeira base pronta para versionamento
+- Estado: ambiente local operacional e primeira base publicada
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
@@ -60,7 +60,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador deve 
 
 - [ ] Criar o fork público `jhon-cruz/fiberq` no GitHub; a tela final está preparada e exige confirmação do proprietário.
 - [ ] Alterar a URL do submódulo de upstream para o fork e manter o upstream como fonte de atualização.
-- [ ] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber`.
+- [x] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber` (commit inicial `bdecf27`).
 - [ ] Executar a matriz FiberQ nos containers QGIS 3/Qt5 e QGIS 4/Qt6 na CI.
 - [ ] Criar a interface web multiusuário para acompanhamento no navegador.
 - [ ] Implementar o modelo óptico completo: fibras, fusões, splitters, CTOs e portas.
