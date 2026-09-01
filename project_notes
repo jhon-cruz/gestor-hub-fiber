@@ -5,14 +5,14 @@
 ## Status geral
 
 - Fase atual: transição da Fase 1 para a Fase 2 — Domínio óptico
-- Estado: fundação operacional; inventário óptico inicial em implementação
+- Estado: fundação operacional; primeira camada relacional do domínio óptico implementada
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.4.0`
+- Versão atual: `0.5.0`
 
 ## Entregue nesta fase
 
@@ -49,8 +49,12 @@
 - [x] Limite de visualização ampliado para 5.000 elementos e consulta espacial otimizada sem N+1.
 - [x] Tema escuro/claro persistente para autenticação, navegação, inventário, modais e formulários.
 - [x] Tema do mapa separado do sistema: claro por padrão e cinza suave opcional por usuário.
+- [x] Ajuste independente do mapa publicado no commit `0e6bdc8`.
 - [x] Visão inicial de inventário com pesquisa, filtros, resumo e navegação direta ao mapa.
 - [x] Tema e inventário v0.4.0 publicados no commit `bfdf485`.
+- [x] Equipamentos explícitos para OLT, DIO, splitter e CTO.
+- [x] Portas geradas por capacidade, com estados, revisão concorrente e auditoria.
+- [x] Vínculo UUID entre equipamento óptico e feição geográfica de tipo compatível.
 
 ## Validação executada
 
@@ -59,7 +63,7 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação: 10 testes aprovados.
+- Testes da API/RBAC/interface/importação/domínio óptico: 12 testes aprovados.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.
@@ -73,6 +77,8 @@
 | Autenticar | sim | sim |
 | Consultar mapa | sim | sim |
 | Criar/editar/excluir feições | sim | não |
+| Consultar equipamentos e portas ópticas | sim | sim |
+| Criar/editar equipamentos e portas ópticas | sim | não |
 | Criar usuários | sim | não |
 
 Não existe usuário ou senha padrão versionado. O primeiro administrador pode ser criado na tela inicial ou interativamente com `make create-admin`.
@@ -106,6 +112,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - `docs/development.md`
 - `docs/security/authentication-and-roles.md`
 - `docs/fiberq-fork.md`
+- `docs/optical-domain.md`
 
 ## Histórico resumido
 
@@ -121,7 +128,8 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - Importador KMZ v0.3.0 implementado e validado com a rede real fornecida.
 - Importador KMZ v0.3.0 publicado no repositório do produto (`f31daf9`).
 - Tema escuro e inventário operacional iniciados para a versão 0.4.0.
+- Domínio relacional de equipamentos e portas implementado para a versão 0.5.0.
 
 ## Próxima atualização prevista
 
-Concluir o fork; depois iniciar o domínio óptico completo do MVP.
+Criar a gestão visual de equipamentos e portas; depois modelar cabos, fibras e fusões.
