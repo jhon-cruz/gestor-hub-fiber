@@ -23,6 +23,10 @@ def test_interface_is_served_with_security_headers(client):
     assert 'id="detail-fiber-count"' in response.text
     assert 'id="inventory-view"' in response.text
     assert 'id="inventory-table-body"' in response.text
+    assert 'id="optical-view"' in response.text
+    assert 'id="device-create-dialog"' in response.text
+    assert 'id="device-detail-dialog"' in response.text
+    assert 'id="device-ports-list"' in response.text
     assert response.headers["x-frame-options"] == "DENY"
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 

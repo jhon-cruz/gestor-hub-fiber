@@ -389,6 +389,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .inventory-stats span { color: var(--muted); font-size: 9px; }
 .inventory-card { margin-top: 18px; border: 1px solid var(--line); border-radius: 13px; background: var(--white); box-shadow: var(--shadow-soft); }
 .inventory-toolbar { display: grid; grid-template-columns: minmax(210px, 1fr) 190px 190px auto; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid var(--line); }
+.inventory-toolbar.optical-toolbar { grid-template-columns: minmax(260px, 1fr) 190px auto; }
 .inventory-toolbar input, .inventory-toolbar select { min-height: 39px; font-size: 11px; }
 .inventory-search { position: relative; display: block; }
 .inventory-search > span { position: absolute; z-index: 1; top: 11px; left: 12px; color: var(--muted); }
@@ -413,6 +414,26 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .inventory-empty > span { font-size: 28px; color: var(--mint); }
 .inventory-empty strong { color: var(--ink); font-size: 12px; }
 .inventory-empty small { font-size: 9px; }
+
+.device-edit-form { display: grid; gap: 16px; margin-top: 22px; }
+.device-detail-actions { display: flex; justify-content: space-between; gap: 10px; }
+.device-ports-heading { margin: 25px 0 12px; padding-top: 20px; border-top: 1px solid var(--line); }
+.device-ports-heading h3 { margin-bottom: 3px; }
+.device-ports-heading small { color: var(--muted); font-size: 10px; }
+.device-ports-list { max-height: 360px; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-right: 3px; }
+.device-port-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(115px, .8fr) auto; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; padding: 8px; background: var(--paper); }
+.device-port-row label { min-width: 0; }
+.device-port-row input, .device-port-row select { min-height: 34px; padding: 7px 8px; font-size: 10px; }
+.device-port-identity { min-width: 0; }
+.device-port-identity strong, .device-port-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device-port-identity strong { font-size: 10px; }
+.device-port-identity small { margin-top: 3px; color: var(--muted); font-size: 8px; text-transform: uppercase; }
+.port-state { display: inline-flex; align-items: center; gap: 5px; }
+.port-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--violet); }
+.port-state.available::before { background: #20bb91; }
+.port-state.occupied::before { background: var(--mint); }
+.port-state.reserved::before { background: #e5a925; }
+.port-state.damaged::before { background: var(--danger); }
 
 :root[data-theme="dark"] .auth-panel { background: #081a29; }
 :root[data-theme="dark"] label > span:first-child { color: #b3c5d4; }
@@ -487,6 +508,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .import-layout { grid-template-columns: 1fr; }
   .inventory-stage { padding: 22px 16px; }
   .inventory-toolbar { grid-template-columns: 1fr 1fr; }
+  .inventory-toolbar.optical-toolbar { grid-template-columns: 1fr 1fr; }
   .inventory-search { grid-column: 1 / -1; }
 }
 
@@ -509,9 +531,13 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .inventory-heading { align-items: flex-start; flex-direction: column; }
   .inventory-stats { grid-template-columns: 1fr 1fr; }
   .inventory-toolbar { grid-template-columns: 1fr; }
+  .inventory-toolbar.optical-toolbar { grid-template-columns: 1fr; }
   .inventory-search { grid-column: auto; }
   .inventory-table th:nth-child(4), .inventory-table td:nth-child(4),
   .inventory-table th:nth-child(5), .inventory-table td:nth-child(5) { display: none; }
+  .device-ports-list { grid-template-columns: 1fr; }
+  .device-port-row { grid-template-columns: 1fr 120px; }
+  .device-port-row .button { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

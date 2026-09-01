@@ -18,7 +18,7 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 - leitura de feições para ambos os papéis;
 - criação, edição e exclusão de feições somente por administradores, incluindo tipo, rede e quantidade de fibras;
 - importação KMZ com pré-visualização, auditoria e reimportação sem duplicidade;
-- domínio relacional inicial para OLTs, DIOs, splitters, CTOs e suas portas;
+- domínio relacional e gestão visual para OLTs, DIOs, splitters, CTOs e suas portas;
 - auditoria das alterações de mapa;
 - criação do primeiro administrador pela própria interface;
 - FiberQ 1.4.0 preservado como submódulo upstream enquanto o fork GitHub é concluído.

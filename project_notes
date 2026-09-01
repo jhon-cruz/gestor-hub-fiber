@@ -12,7 +12,7 @@
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.6.0`
+- Versão atual: `0.7.0`
 
 ## Entregue nesta fase
 
@@ -60,6 +60,9 @@
 - [x] Busca autenticada de endereços brasileiros, com cache, limitação de chamadas e atribuição OpenStreetMap.
 - [x] Edição administrativa do tipo de ativo, rede e quantidade de fibras em cabos/rotas.
 - [x] Tipografia dos painéis de resumo do mapa ampliada para leitura operacional.
+- [x] Tela de equipamentos com pesquisa, filtros e indicadores de portas disponíveis/ocupadas.
+- [x] Criação visual de OLT, DIO, splitter e CTO, com vínculo opcional a item compatível do mapa.
+- [x] Consulta e atualização administrativa dos estados das portas, preservando `viewer` como somente leitura.
 
 ## Validação executada
 
@@ -139,7 +142,8 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - Tema escuro e inventário operacional iniciados para a versão 0.4.0.
 - Domínio relacional de equipamentos e portas implementado para a versão 0.5.0.
 - Redes por localidade, busca de endereço e edição de fibras implementadas para a versão 0.6.0.
+- Gestão visual de equipamentos e portas implementada para a versão 0.7.0.
 
 ## Próxima atualização prevista
 
-Criar a gestão visual de equipamentos e portas; depois evoluir cabos, fibras, fusões e cálculo automático de viabilidade.
+Modelar cabos, fibras, fusões e conexões ponta a ponta; depois adicionar cálculo automático de viabilidade.

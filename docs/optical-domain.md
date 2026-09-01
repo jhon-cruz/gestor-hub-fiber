@@ -36,6 +36,18 @@ A criação do equipamento e de todas as portas acontece na mesma transação. Q
 mapa, o total de portas é refletido na propriedade `capacity` da feição. Todas as alterações são
 auditadas.
 
+## Interface
+
+A seção **Equipamentos** oferece pesquisa, filtro por tipo e indicadores de capacidade instalada,
+ocupada e disponível. Usuários `viewer` podem consultar equipamentos e portas. Administradores
+também podem:
+
+- criar equipamentos e gerar sua capacidade de portas em uma transação;
+- vincular o equipamento a uma feição compatível do mapa;
+- editar identificação, fabricante, modelo, série e estado operacional;
+- alterar cada porta entre disponível, reservada, ocupada, danificada ou desativada;
+- navegar do equipamento para seu item geográfico.
+
 ## Limites desta entrega
 
 Ainda não há conexões entre portas, fibras individuais, fusões ou rastreamento ponta a ponta.

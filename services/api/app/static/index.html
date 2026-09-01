@@ -114,6 +114,7 @@
         <nav aria-label="Navegação principal">
           <button class="nav-item active" data-view="map"><span class="nav-icon">⌁</span><span>Mapa da rede</span></button>
           <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span></button>
+          <button class="nav-item" data-view="optical"><span class="nav-icon">◫</span><span>Equipamentos</span></button>
           <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
           <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇧</span><span>Importar KMZ</span></button>
           <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
@@ -242,6 +243,39 @@
             </div>
           </section>
         </section>
+
+        <section id="optical-view" class="inventory-stage app-view hidden" aria-labelledby="optical-title">
+          <header class="inventory-heading">
+            <div>
+              <p class="overline">Infraestrutura óptica</p>
+              <h1 id="optical-title">Equipamentos e portas</h1>
+              <p>Gerencie OLTs, DIOs, splitters e CTOs, acompanhando a ocupação de cada porta.</p>
+            </div>
+            <button id="add-device-button" class="button primary admin-only" type="button">＋ Novo equipamento</button>
+          </header>
+
+          <section class="inventory-stats" aria-label="Resumo dos equipamentos">
+            <article><small>Equipamentos</small><strong id="device-total">0</strong><span>itens cadastrados</span></article>
+            <article><small>Portas totais</small><strong id="device-ports-total">0</strong><span>capacidade instalada</span></article>
+            <article><small>Portas ocupadas</small><strong id="device-ports-occupied">0</strong><span>em utilização</span></article>
+            <article><small>Portas disponíveis</small><strong id="device-ports-available">0</strong><span>livres para atendimento</span></article>
+          </section>
+
+          <section class="inventory-card">
+            <div class="inventory-toolbar optical-toolbar">
+              <label class="inventory-search"><span aria-hidden="true">⌕</span><input id="device-search" type="search" placeholder="Buscar equipamento, fabricante ou modelo" aria-label="Buscar equipamento"></label>
+              <label><span class="sr-only">Filtrar equipamento por tipo</span><select id="device-type-filter"><option value="">Todos os tipos</option><option value="olt">OLT</option><option value="dio">DIO</option><option value="splitter">Splitter</option><option value="cto">CTO</option></select></label>
+              <strong id="device-result-count" class="inventory-result-count">0 resultados</strong>
+            </div>
+            <div class="inventory-table-wrap">
+              <table class="inventory-table">
+                <thead><tr><th>Equipamento</th><th>Tipo</th><th>Status</th><th>Portas</th><th>Ocupação</th><th><span class="sr-only">Ação</span></th></tr></thead>
+                <tbody id="device-table-body"></tbody>
+              </table>
+              <div id="device-empty" class="inventory-empty hidden"><span>◫</span><strong>Nenhum equipamento encontrado</strong><small>Cadastre um equipamento e, se desejar, vincule-o a um item do mapa.</small></div>
+            </div>
+          </section>
+        </section>
       </section>
     </main>
 
@@ -274,6 +308,44 @@
         <p id="network-error" class="form-error" role="alert"></p>
         <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Criar e abrir rede</button></footer>
       </form>
+    </dialog>
+
+    <dialog id="device-create-dialog" class="modal">
+      <form id="device-create-form" method="dialog">
+        <header><div><p class="overline">Domínio óptico</p><h2>Novo equipamento</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label><span>Tipo</span><select id="new-device-type"><option value="cto">CTO</option><option value="splitter">Splitter</option><option value="dio">DIO</option><option value="olt">OLT</option></select></label>
+          <label><span>Quantidade de portas</span><input id="new-device-capacity" type="number" min="1" max="4096" value="16" required></label>
+          <label class="span-2"><span>Nome</span><input id="new-device-name" maxlength="160" placeholder="Ex.: CTO Boqueirão 01" required></label>
+          <label><span>Status</span><select id="new-device-status"></select></label>
+          <label><span>Item correspondente no mapa</span><select id="new-device-feature"><option value="">Sem vínculo geográfico</option></select></label>
+          <label><span>Fabricante</span><input id="new-device-manufacturer" maxlength="120" placeholder="Opcional"></label>
+          <label><span>Modelo</span><input id="new-device-model" maxlength="120" placeholder="Opcional"></label>
+          <label class="span-2"><span>Número de série</span><input id="new-device-serial" maxlength="120" placeholder="Opcional"></label>
+        </div>
+        <p id="device-create-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Criar equipamento e portas</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="device-detail-dialog" class="modal wide-modal">
+      <section>
+        <header><div><p class="overline">Equipamento óptico</p><h2 id="device-detail-title">—</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <form id="device-edit-form" class="device-edit-form">
+          <div class="form-grid compact-grid">
+            <label><span>Nome</span><input id="device-detail-name" maxlength="160" required></label>
+            <label><span>Status</span><select id="device-detail-status"></select></label>
+            <label><span>Fabricante</span><input id="device-detail-manufacturer" maxlength="120"></label>
+            <label><span>Modelo</span><input id="device-detail-model" maxlength="120"></label>
+            <label><span>Número de série</span><input id="device-detail-serial" maxlength="120"></label>
+            <label><span>Capacidade</span><input id="device-detail-capacity" readonly></label>
+          </div>
+          <div class="device-detail-actions"><button id="device-map-button" class="button ghost" type="button">Ver no mapa</button><button class="button primary admin-only" type="submit">Salvar equipamento</button></div>
+          <p class="viewer-notice">Modo de consulta: equipamentos e portas só podem ser alterados por administradores.</p>
+        </form>
+        <div class="section-title device-ports-heading"><div><h3>Portas</h3><small id="device-ports-summary">—</small></div></div>
+        <div id="device-ports-list" class="device-ports-list"></div>
+      </section>
     </dialog>
 
     <dialog id="users-dialog" class="modal wide-modal">

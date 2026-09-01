@@ -9,6 +9,16 @@ const STATUS_OPTIONS = [
   ["deactivated", "Desativado"],
 ];
 
+const PORT_STATUS_OPTIONS = [
+  ["available", "Disponível"],
+  ["reserved", "Reservada"],
+  ["occupied", "Ocupada"],
+  ["damaged", "Danificada"],
+  ["deactivated", "Desativada"],
+];
+
+const DEVICE_LABELS = {olt: "OLT", dio: "DIO", splitter: "Splitter", cto: "CTO"};
+
 const TYPE_LABELS = {
   cto: "CTO",
   pole: "Poste",
@@ -52,6 +62,9 @@ const state = {
   networks: [],
   selectedNetworkId: localStorage.getItem("gestorHubNetworkId") || "",
   addressMarker: null,
+  opticalDevices: [],
+  selectedDevice: null,
+  devicePorts: [],
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -186,6 +199,7 @@ function logout(showMessage = true) {
   state.token = null;
   state.user = null;
   sessionStorage.removeItem("gestorHubToken");
+  document.body.classList.remove("admin-mode", "viewer-mode");
   $("#app-shell").classList.add("hidden");
   $("#auth-screen").classList.remove("hidden");
   $("#login-form").classList.remove("hidden");
@@ -219,6 +233,8 @@ async function enterApplication() {
   const shell = $("#app-shell");
   shell.classList.toggle("admin-mode", isAdmin);
   shell.classList.toggle("viewer-mode", !isAdmin);
+  document.body.classList.toggle("admin-mode", isAdmin);
+  document.body.classList.toggle("viewer-mode", !isAdmin);
   $("#current-username").textContent = state.user.username;
   $("#current-role").textContent = isAdmin ? "Administrador" : "Somente visualização";
   $("#user-avatar").textContent = state.user.username.slice(0, 1).toUpperCase();
@@ -227,7 +243,7 @@ async function enterApplication() {
   initializeMap();
   window.setTimeout(() => state.map.invalidateSize(), 50);
   await loadFeatures(true);
-  await loadNetworks();
+  await Promise.all([loadNetworks(), loadOpticalDevices()]);
 }
 
 async function handleLogin(event) {
@@ -628,16 +644,273 @@ function renderInventory() {
   }).length.toLocaleString("pt-BR");
 }
 
+function portStatusLabel(value) {
+  return PORT_STATUS_OPTIONS.find(([status]) => status === value)?.[1] || value;
+}
+
+function renderOpticalDevices() {
+  const body = $("#device-table-body");
+  if (!body) return;
+  const query = $("#device-search").value.trim().toLowerCase();
+  const type = $("#device-type-filter").value;
+  const filtered = state.opticalDevices.filter((device) => {
+    const searchable = [device.name, device.manufacturer, device.model, device.serial_number]
+      .filter(Boolean).join(" ").toLowerCase();
+    return (!query || searchable.includes(query)) && (!type || device.device_type === type);
+  });
+
+  body.replaceChildren(...filtered.map((device) => {
+    const row = document.createElement("tr");
+    const identityCell = document.createElement("td");
+    const identity = document.createElement("div");
+    identity.className = "inventory-identity";
+    const dot = document.createElement("span");
+    dot.className = "inventory-type-dot";
+    dot.style.background = TYPE_COLORS[device.device_type] || TYPE_COLORS.other;
+    const text = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = device.name;
+    const meta = document.createElement("small");
+    meta.textContent = [device.manufacturer, device.model].filter(Boolean).join(" · ")
+      || (device.map_feature_id ? "Vinculado ao mapa" : "Sem vínculo geográfico");
+    text.append(name, meta);
+    identity.append(dot, text);
+    identityCell.append(identity);
+
+    const typeCell = document.createElement("td");
+    typeCell.textContent = DEVICE_LABELS[device.device_type] || device.device_type;
+    const statusCell = document.createElement("td");
+    const pill = document.createElement("span");
+    pill.className = `status-pill ${device.status}`;
+    pill.textContent = statusLabel(device.status);
+    statusCell.append(pill);
+    const portsCell = document.createElement("td");
+    portsCell.textContent = device.port_summary.total.toLocaleString("pt-BR");
+    const occupationCell = document.createElement("td");
+    const percentage = device.port_summary.total
+      ? Math.round((device.port_summary.occupied / device.port_summary.total) * 100)
+      : 0;
+    occupationCell.textContent = `${device.port_summary.occupied} ocupadas · ${percentage}%`;
+    const actionCell = document.createElement("td");
+    const action = document.createElement("button");
+    action.className = "button ghost inventory-open";
+    action.type = "button";
+    action.textContent = "Ver portas";
+    action.addEventListener("click", () => openDevice(device));
+    actionCell.append(action);
+    row.append(identityCell, typeCell, statusCell, portsCell, occupationCell, actionCell);
+    return row;
+  }));
+
+  const totals = state.opticalDevices.reduce((summary, device) => ({
+    total: summary.total + device.port_summary.total,
+    occupied: summary.occupied + device.port_summary.occupied,
+    available: summary.available + device.port_summary.available,
+  }), {total: 0, occupied: 0, available: 0});
+  $("#device-total").textContent = state.opticalDevices.length.toLocaleString("pt-BR");
+  $("#device-ports-total").textContent = totals.total.toLocaleString("pt-BR");
+  $("#device-ports-occupied").textContent = totals.occupied.toLocaleString("pt-BR");
+  $("#device-ports-available").textContent = totals.available.toLocaleString("pt-BR");
+  $("#device-result-count").textContent = `${filtered.length} resultado${filtered.length === 1 ? "" : "s"}`;
+  $("#device-empty").classList.toggle("hidden", filtered.length > 0);
+}
+
+async function loadOpticalDevices() {
+  try {
+    state.opticalDevices = await request("/api/v1/optical-devices?limit=2000");
+    renderOpticalDevices();
+    populateDeviceFeatureOptions();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function populateDeviceFeatureOptions() {
+  const select = $("#new-device-feature");
+  if (!select) return;
+  const type = $("#new-device-type").value;
+  const eligible = state.features.filter((feature) =>
+    feature.properties.feature_type === type && !feature.properties.optical_device_id
+  );
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "Sem vínculo geográfico";
+  select.replaceChildren(empty, ...eligible.map((feature) => {
+    const option = document.createElement("option");
+    option.value = feature.id;
+    option.textContent = feature.properties.name;
+    return option;
+  }));
+}
+
+async function createOpticalDevice(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#device-create-error").textContent = "";
+  setBusy(form, true);
+  try {
+    const device = await request("/api/v1/optical-devices", {
+      method: "POST",
+      body: JSON.stringify({
+        map_feature_id: $("#new-device-feature").value || null,
+        device_type: $("#new-device-type").value,
+        name: $("#new-device-name").value.trim(),
+        status: $("#new-device-status").value,
+        manufacturer: $("#new-device-manufacturer").value.trim() || null,
+        model: $("#new-device-model").value.trim() || null,
+        serial_number: $("#new-device-serial").value.trim() || null,
+        port_capacity: Number($("#new-device-capacity").value),
+        properties: {},
+      }),
+    });
+    form.reset();
+    setStatusOptions($("#new-device-status"));
+    $("#new-device-capacity").value = "16";
+    $("#device-create-dialog").close();
+    await Promise.all([loadFeatures(false), loadOpticalDevices()]);
+    await openDevice(device);
+    toast("Equipamento e portas criados.");
+  } catch (error) {
+    $("#device-create-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+function renderDevicePorts() {
+  const list = $("#device-ports-list");
+  list.replaceChildren(...state.devicePorts.map((port) => {
+    const row = document.createElement("article");
+    row.className = "device-port-row";
+    const identity = document.createElement("div");
+    identity.className = "device-port-identity";
+    const name = document.createElement("strong");
+    name.className = `port-state ${port.status}`;
+    name.textContent = port.label || `Porta ${port.position}`;
+    const kind = document.createElement("small");
+    kind.textContent = `${port.port_kind.replaceAll("_", " ")} · posição ${port.position}`;
+    identity.append(name, kind);
+    const select = document.createElement("select");
+    for (const [value, label] of PORT_STATUS_OPTIONS) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.append(option);
+    }
+    select.value = port.status;
+    select.disabled = state.user.role !== "admin";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button ghost small admin-only";
+    button.textContent = "Salvar";
+    button.addEventListener("click", () => updateOpticalPort(port, select.value, button));
+    row.append(identity, select, button);
+    return row;
+  }));
+}
+
+async function openDevice(device) {
+  state.selectedDevice = device;
+  $("#device-detail-title").textContent = `${DEVICE_LABELS[device.device_type]} · ${device.name}`;
+  $("#device-detail-name").value = device.name;
+  $("#device-detail-status").value = device.status;
+  $("#device-detail-manufacturer").value = device.manufacturer || "";
+  $("#device-detail-model").value = device.model || "";
+  $("#device-detail-serial").value = device.serial_number || "";
+  $("#device-detail-capacity").value = `${device.port_summary.total} portas`;
+  $("#device-map-button").classList.toggle("hidden", !device.map_feature_id);
+  const canEdit = state.user.role === "admin";
+  for (const selector of ["#device-detail-name", "#device-detail-manufacturer", "#device-detail-model", "#device-detail-serial"]) {
+    $(selector).readOnly = !canEdit;
+  }
+  $("#device-detail-status").disabled = !canEdit;
+  $("#device-ports-summary").textContent = "Carregando portas...";
+  $("#device-ports-list").innerHTML = '<span class="field-hint">Carregando...</span>';
+  $("#device-detail-dialog").showModal();
+  try {
+    state.devicePorts = await request(`/api/v1/optical-devices/${device.id}/ports`);
+    $("#device-ports-summary").textContent = [
+      `${device.port_summary.available} disponíveis`,
+      `${device.port_summary.occupied} ocupadas`,
+      `${device.port_summary.reserved} reservadas`,
+    ].join(" · ");
+    renderDevicePorts();
+  } catch (error) {
+    $("#device-ports-list").textContent = error.message;
+  }
+}
+
+async function updateOpticalDevice(event) {
+  event.preventDefault();
+  if (!state.selectedDevice || state.user.role !== "admin") return;
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const updated = await request(`/api/v1/optical-devices/${state.selectedDevice.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: $("#device-detail-name").value.trim(),
+        status: $("#device-detail-status").value,
+        manufacturer: $("#device-detail-manufacturer").value.trim() || null,
+        model: $("#device-detail-model").value.trim() || null,
+        serial_number: $("#device-detail-serial").value.trim() || null,
+        expected_revision: state.selectedDevice.revision,
+      }),
+    });
+    state.selectedDevice = updated;
+    await loadOpticalDevices();
+    toast("Equipamento atualizado.");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+async function updateOpticalPort(port, status, button) {
+  button.disabled = true;
+  try {
+    const updated = await request(`/api/v1/optical-ports/${port.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({status, expected_revision: port.revision}),
+    });
+    state.devicePorts = state.devicePorts.map((item) => item.id === updated.id ? updated : item);
+    await loadOpticalDevices();
+    const fresh = state.opticalDevices.find((device) => device.id === state.selectedDevice.id);
+    if (fresh) state.selectedDevice = fresh;
+    renderDevicePorts();
+    toast(`Porta marcada como ${portStatusLabel(status).toLowerCase()}.`);
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openSelectedDeviceOnMap() {
+  if (!state.selectedDevice?.map_feature_id) return;
+  const feature = state.features.find((item) => item.id === state.selectedDevice.map_feature_id);
+  if (!feature) return toast("O item geográfico vinculado não está disponível.", "error");
+  $("#device-detail-dialog").close();
+  openFeatureOnMap(feature);
+}
+
 function showView(view) {
-  if (!["map", "inventory"].includes(view)) return;
+  if (!["map", "inventory", "optical"].includes(view)) return;
   state.view = view;
   $("#map-view").classList.toggle("hidden", view !== "map");
   $("#inventory-view").classList.toggle("hidden", view !== "inventory");
+  $("#optical-view").classList.toggle("hidden", view !== "optical");
   $$(".nav-item[data-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  $("#topbar-section").textContent = view === "map" ? "Mapa da rede" : "Inventário";
-  $("#topbar-title").textContent = view === "map" ? "Visão geográfica" : "Ativos da rede";
+  const labels = {
+    map: ["Mapa da rede", "Visão geográfica"],
+    inventory: ["Inventário", "Ativos da rede"],
+    optical: ["Equipamentos", "Domínio óptico"],
+  };
+  $("#topbar-section").textContent = labels[view][0];
+  $("#topbar-title").textContent = labels[view][1];
   $("#feature-search").closest(".search-box").classList.toggle("hidden", view !== "map");
   $("#refresh-button").setAttribute(
     "aria-label", view === "map" ? "Atualizar mapa" : "Atualizar inventário",
@@ -645,8 +918,10 @@ function showView(view) {
   $("#app-shell").classList.remove("menu-open");
   if (view === "map") {
     window.setTimeout(() => state.map?.invalidateSize(), 30);
-  } else {
+  } else if (view === "inventory") {
     renderInventory();
+  } else {
+    renderOpticalDevices();
   }
 }
 
@@ -1064,7 +1339,10 @@ function wireEvents() {
   $("#login-form").addEventListener("submit", handleLogin);
   $("#setup-form").addEventListener("submit", handleSetup);
   $("#logout-button").addEventListener("click", () => logout());
-  $("#refresh-button").addEventListener("click", () => loadFeatures(state.view === "map"));
+  $("#refresh-button").addEventListener("click", () => {
+    if (state.view === "optical") loadOpticalDevices();
+    else loadFeatures(state.view === "map");
+  });
   $("#theme-toggle").addEventListener("click", toggleTheme);
   $("#feature-search").addEventListener("input", () => renderFeatures());
   $("#network-select").addEventListener("change", (event) => selectNetwork(event.target.value));
@@ -1090,6 +1368,24 @@ function wireEvents() {
   $("#inventory-type-filter").addEventListener("change", renderInventory);
   $("#inventory-status-filter").addEventListener("change", renderInventory);
   $("#inventory-map-button").addEventListener("click", () => showView("map"));
+  $("#device-search").addEventListener("input", renderOpticalDevices);
+  $("#device-type-filter").addEventListener("change", renderOpticalDevices);
+  $("#add-device-button").addEventListener("click", () => {
+    populateDeviceFeatureOptions();
+    $("#device-create-dialog").showModal();
+  });
+  $("#new-device-type").addEventListener("change", () => {
+    const defaults = {cto: 16, splitter: 8, dio: 24, olt: 8};
+    $("#new-device-capacity").value = defaults[$("#new-device-type").value];
+    populateDeviceFeatureOptions();
+  });
+  $("#new-device-feature").addEventListener("change", (event) => {
+    const feature = state.features.find((item) => item.id === event.target.value);
+    if (feature) $("#new-device-name").value = feature.properties.name;
+  });
+  $("#device-create-form").addEventListener("submit", createOpticalDevice);
+  $("#device-edit-form").addEventListener("submit", updateOpticalDevice);
+  $("#device-map-button").addEventListener("click", openSelectedDeviceOnMap);
   $("#menu-button").addEventListener("click", () => $("#app-shell").classList.toggle("menu-open"));
   $$(".modal-close").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
   $$(".password-toggle").forEach((button) => button.addEventListener("click", () => {
@@ -1098,7 +1394,7 @@ function wireEvents() {
     button.setAttribute("aria-label", input.type === "password" ? "Mostrar senha" : "Ocultar senha");
   }));
   $$(".nav-item[data-view]").forEach((button) => button.addEventListener("click", () => {
-    if (["map", "inventory"].includes(button.dataset.view)) showView(button.dataset.view);
+    if (["map", "inventory", "optical"].includes(button.dataset.view)) showView(button.dataset.view);
     else {
       toast("Este módulo será liberado em uma próxima etapa.");
       $("#app-shell").classList.remove("menu-open");
@@ -1118,6 +1414,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatusOptions($("#feature-status"));
   setStatusOptions($("#detail-status"));
   setStatusOptions($("#kmz-default-status"));
+  setStatusOptions($("#new-device-status"));
+  setStatusOptions($("#device-detail-status"));
   setTypeOptions($("#detail-type"));
   setInventoryFilters();
   wireEvents();
