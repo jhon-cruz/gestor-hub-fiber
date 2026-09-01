@@ -10,7 +10,7 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 - interface web responsiva com mapa interativo;
 - temas claro e escuro para a interface, mantendo o mapa-base claro e legível;
 - redes nomeadas por localidade, com seleção e enquadramento geográfico automático;
-- busca de endereços no Brasil com cache, marcação no mapa e atribuição OpenStreetMap;
+- busca de endereços no Brasil com CEP, prioridade pela rede selecionada, cache e provedor substituível;
 - inventário pesquisável com filtros por tipo e status e acesso direto ao mapa;
 - PostgreSQL 18 + PostGIS 3.6;
 - autenticação por login e senha com token de curta duração;
@@ -20,6 +20,7 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 - importação KMZ com pré-visualização, auditoria e reimportação sem duplicidade;
 - domínio relacional e gestão visual para OLTs, DIOs, splitters, CTOs e suas portas;
 - cabos estruturados com tubos, fibras individuais, estados e fusões protegidas por integridade referencial;
+- ligação fibra–porta, rastreamento ponta a ponta e orçamento óptico estimado;
 - ícones vetoriais distintos para CTO, caixa de emenda, splitter, OLT, DIO e ONT/ONU;
 - auditoria das alterações de mapa;
 - criação do primeiro administrador pela própria interface;

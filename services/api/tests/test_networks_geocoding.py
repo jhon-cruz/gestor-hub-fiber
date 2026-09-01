@@ -48,6 +48,8 @@ def test_network_groups_existing_source_and_filters_map(client, admin_headers, v
         f"/api/v1/map-features?network_id={network['id']}", headers=viewer_headers
     )
     assert len(filtered.json()["features"]) == 1
+    assert filtered.json()["data_status"]["latest_feature_update_at"] is not None
+    assert filtered.json()["data_status"]["base_map"].startswith("OpenStreetMap")
     assert filtered.json()["features"][0]["properties"]["network_id"] == network["id"]
 
     duplicate = client.post("/api/v1/networks", headers=admin_headers, json=payload)
@@ -67,14 +69,28 @@ def test_network_groups_existing_source_and_filters_map(client, admin_headers, v
     assert niteroi.json()["feature_count"] == 0
 
 
-def test_address_search_is_authenticated_and_cached(client, viewer_headers, monkeypatch):
+def test_address_search_is_authenticated_cached_and_network_biased(
+    client, admin_headers, viewer_headers, monkeypatch
+):
     calls = 0
 
-    async def fake_search(query, limit):
+    network = client.post(
+        "/api/v1/networks",
+        headers=admin_headers,
+        json={
+            "name": "Praia Grande",
+            "city": "Praia Grande",
+            "state": "São Paulo",
+            "viewport": [-46.53, -24.1, -46.35, -23.95],
+        },
+    ).json()
+
+    async def fake_search(query, limit, viewport):
         nonlocal calls
         calls += 1
-        assert query == "Rua Fumio Miyazi, Praia Grande, SP"
+        assert query == "Rua Fumio Miyazi, Praia Grande, São Paulo"
         assert limit == 5
+        assert viewport == [-46.53, -24.1, -46.35, -23.95]
         return [
             {
                 "label": "Rua Fumio Miyazi, Praia Grande, São Paulo, Brasil",
@@ -86,13 +102,14 @@ def test_address_search_is_authenticated_and_cached(client, viewer_headers, monk
             }
         ]
 
-    monkeypatch.setattr("app.api.routes.geocoding.search_nominatim", fake_search)
-    path = "/api/v1/geocoding/search?q=Rua%20Fumio%20Miyazi%2C%20Praia%20Grande%2C%20SP"
+    monkeypatch.setattr("app.api.routes.geocoding.search_addresses", fake_search)
+    path = f"/api/v1/geocoding/search?q=Rua%20Fumio%20Miyazi&network_id={network['id']}"
     assert client.get(path).status_code == 401
 
     first = client.get(path, headers=viewer_headers)
     assert first.status_code == 200, first.text
     assert first.json()["cached"] is False
+    assert first.json()["network_bias"] is True
     assert first.json()["results"][0]["longitude"] == -46.425
 
     second = client.get(path, headers=viewer_headers)

@@ -13,6 +13,7 @@ from app.models.fiber_topology import (
     CableTube,
     FiberConnection,
     FiberConnectionEndpoint,
+    FiberPortLink,
     OpticalCable,
     OpticalFiber,
 )
@@ -299,6 +300,12 @@ def list_cable_fibers(cable_id: uuid.UUID, _: CurrentUser, db: DbSession) -> lis
             )
         ):
             connected[fiber_id].append(end_side)
+        for fiber_id, fiber_end in db.execute(
+            select(FiberPortLink.fiber_id, FiberPortLink.fiber_end).where(
+                FiberPortLink.fiber_id.in_(fiber_ids)
+            )
+        ):
+            connected[fiber_id].append(fiber_end)
     return [_fiber_response(fiber, tube, sorted(connected[fiber.id])) for fiber, tube in rows]
 
 
@@ -409,6 +416,16 @@ def create_connection(
             status_code=status.HTTP_409_CONFLICT,
             detail="fiber endpoint is already connected",
         )
+    linked_to_port = db.scalar(
+        select(FiberPortLink.id).where(
+            tuple_(FiberPortLink.fiber_id, FiberPortLink.fiber_end).in_(requested)
+        )
+    )
+    if linked_to_port is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="fiber endpoint is already connected to an optical port",
+        )
     connection = FiberConnection(
         enclosure_feature_id=payload.enclosure_feature_id,
         connection_type=payload.connection_type,
@@ -435,6 +452,10 @@ def create_connection(
             status_code=status.HTTP_409_CONFLICT,
             detail="fiber endpoint is already connected",
         ) from exc
+    for fiber in fibers.values():
+        fiber.status = "occupied"
+        fiber.revision += 1
+        fiber.updated_by = actor.id
     record_audit(
         db,
         actor_user_id=actor.id,
@@ -456,6 +477,7 @@ def delete_connection(
     if connection is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="connection not found")
     before = _connection_snapshot(connection)
+    fiber_ids = [endpoint.fiber_id for endpoint in connection.endpoints]
     record_audit(
         db,
         actor_user_id=actor.id,
@@ -465,4 +487,15 @@ def delete_connection(
         before_data=before,
     )
     db.delete(connection)
+    db.flush()
+    for fiber_id in fiber_ids:
+        has_connection = db.scalar(
+            select(FiberConnectionEndpoint.id).where(FiberConnectionEndpoint.fiber_id == fiber_id)
+        )
+        has_port = db.scalar(select(FiberPortLink.id).where(FiberPortLink.fiber_id == fiber_id))
+        fiber = db.get(OpticalFiber, fiber_id)
+        if fiber and not has_connection and not has_port:
+            fiber.status = "available"
+            fiber.revision += 1
+            fiber.updated_by = actor.id
     return Response(status_code=status.HTTP_204_NO_CONTENT)

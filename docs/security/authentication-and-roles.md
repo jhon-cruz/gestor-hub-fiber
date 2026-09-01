@@ -2,7 +2,7 @@
 
 ## Papéis iniciais
 
-| Papel | Ler mapa/topologia | Alterar mapa, equipamentos, fibras e fusões | Criar usuários | Listar usuários |
+| Papel | Ler mapa/topologia e rastrear | Alterar mapa, equipamentos e conectividade | Criar usuários | Listar usuários |
 |---|---:|---:|---:|---:|
 | `admin` | Sim | Sim | Sim | Sim |
 | `viewer` | Sim | Não | Não | Não |

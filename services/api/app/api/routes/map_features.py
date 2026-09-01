@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.dependencies import AdminUser, CurrentUser, DbSession
 from app.models.map_feature import MapFeature
+from app.models.map_import import MapImport
 from app.models.network import ServiceNetwork
 from app.schemas.map_feature import MapFeatureCreate, MapFeatureUpdate
 from app.services.audit import record_audit
@@ -67,12 +68,19 @@ def list_map_features(
     )
     if network_id is not None:
         query = query.where(MapFeature.network_id == network_id)
-    rows = db.execute(query.limit(limit).offset(offset))
+    rows = list(db.execute(query.limit(limit).offset(offset)))
+    latest_import = db.scalar(select(MapImport).order_by(MapImport.created_at.desc()).limit(1))
     return {
         "type": "FeatureCollection",
         "features": [
             _geojson_feature(db, feature, geometry_json) for feature, geometry_json in rows
         ],
+        "data_status": {
+            "latest_feature_update_at": db.scalar(select(func.max(MapFeature.updated_at))),
+            "latest_import_at": latest_import.created_at if latest_import else None,
+            "latest_import_filename": latest_import.filename if latest_import else None,
+            "base_map": "OpenStreetMap — mosaicos carregados sob demanda",
+        },
     }
 
 

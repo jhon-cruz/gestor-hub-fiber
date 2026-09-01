@@ -13,14 +13,14 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css?v=0.8.0">
+    <link rel="stylesheet" href="/static/app.css?v=0.9.0">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js?v=0.8.0"></script>
+    <script defer src="/static/app.js?v=0.9.0"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -155,6 +155,7 @@
             <p class="overline">Território operacional</p>
             <h1>Mapa da rede</h1>
             <p id="map-summary">Carregando ativos geográficos...</p>
+            <small id="map-data-status" class="map-data-status">Mapa-base OpenStreetMap carregado sob demanda</small>
             <div class="network-switcher">
               <label><span>Rede</span><select id="network-select" aria-label="Selecionar rede"><option value="">Todas as redes</option></select></label>
               <button id="add-network-button" class="icon-button admin-only" type="button" aria-label="Criar rede">＋</button>
@@ -167,6 +168,7 @@
               <input id="address-search-input" minlength="3" maxlength="200" placeholder="Rua, bairro, cidade e estado" aria-label="Buscar endereço" required>
               <button class="button primary small" type="submit">Buscar endereço</button>
             </form>
+            <small id="address-search-hint" class="address-search-hint">A rede selecionada prioriza resultados próximos. Você também pode informar um CEP.</small>
             <div id="address-results" class="address-results hidden" aria-live="polite"></div>
           </section>
 
@@ -429,6 +431,35 @@
         <p id="fusion-error" class="form-error" role="alert"></p>
         <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Registrar fusão</button></footer>
       </form>
+    </dialog>
+
+    <dialog id="port-link-dialog" class="modal">
+      <form id="port-link-form" method="dialog">
+        <header><div><p class="overline">Continuidade óptica</p><h2>Conectar fibra à porta</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label class="span-2"><span>Porta do equipamento</span><input id="port-link-label" readonly></label>
+          <label class="span-2"><span>Cabo</span><select id="port-link-cable" required></select></label>
+          <label><span>Fibra</span><select id="port-link-fiber" required></select></label>
+          <label><span>Extremidade da fibra</span><select id="port-link-fiber-end"><option value="a">A</option><option value="b">B</option></select></label>
+          <label id="port-link-side-field" class="hidden"><span>Lado do adaptador</span><select id="port-link-port-side"><option value="a">A</option><option value="b">B</option></select></label>
+          <label><span>Perda da terminação (dB)</span><input id="port-link-loss" type="number" min="0" max="10" step="0.01" value="0.2" required></label>
+          <label class="span-2"><span>Observações</span><textarea id="port-link-notes" rows="2" maxlength="500"></textarea></label>
+        </div>
+        <p id="port-link-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Conectar fibra e porta</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="trace-dialog" class="modal wide-modal">
+      <section>
+        <header><div><p class="overline">Orçamento óptico</p><h2 id="trace-title">Rastreamento ponta a ponta</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <form id="trace-form" class="trace-settings">
+          <label><span>Potência de transmissão (dBm)</span><input id="trace-tx-power" type="number" min="-20" max="20" step="0.01" value="3"></label>
+          <label><span>Sensibilidade mínima (dBm)</span><input id="trace-rx-min" type="number" min="-50" max="0" step="0.01" value="-27"></label>
+          <button class="button primary" type="submit">Calcular novamente</button>
+        </form>
+        <div id="trace-results" class="trace-results"><span class="field-hint">Calculando continuidade...</span></div>
+      </section>
     </dialog>
 
     <dialog id="users-dialog" class="modal wide-modal">

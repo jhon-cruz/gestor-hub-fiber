@@ -18,6 +18,7 @@ from app.api.routes import (
     map_features,
     networks,
     optical,
+    optical_trace,
     users,
 )
 from app.core.config import get_settings
@@ -49,6 +50,8 @@ app.include_router(geocoding.router, prefix="/api/v1")
 app.include_router(fiber_topology.router, prefix="/api/v1")
 app.include_router(fiber_topology.fibers_router, prefix="/api/v1")
 app.include_router(fiber_topology.connections_router, prefix="/api/v1")
+app.include_router(optical_trace.links_router, prefix="/api/v1")
+app.include_router(optical_trace.trace_router, prefix="/api/v1")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 

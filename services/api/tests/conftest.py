@@ -11,6 +11,7 @@ from app.models.fiber_topology import (
     CableTube,
     FiberConnection,
     FiberConnectionEndpoint,
+    FiberPortLink,
     OpticalCable,
     OpticalFiber,
 )
@@ -28,6 +29,7 @@ def clean_database():
     with SessionLocal.begin() as db:
         db.execute(delete(AuditLog))
         db.execute(delete(GeocodeCache))
+        db.execute(delete(FiberPortLink))
         db.execute(delete(FiberConnectionEndpoint))
         db.execute(delete(FiberConnection))
         db.execute(delete(OpticalFiber))

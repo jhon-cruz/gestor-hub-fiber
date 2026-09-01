@@ -70,3 +70,12 @@ class FiberConnectionCreate(BaseModel):
         if self.endpoints[0].fiber_id == self.endpoints[1].fiber_id:
             raise ValueError("a fiber cannot be connected to itself")
         return self
+
+
+class FiberPortLinkCreate(BaseModel):
+    fiber_id: uuid.UUID
+    fiber_end: EndSide
+    port_id: uuid.UUID
+    port_side: EndSide = "a"
+    insertion_loss_db: float = Field(default=0.2, ge=0, le=10)
+    notes: str | None = Field(default=None, max_length=500)

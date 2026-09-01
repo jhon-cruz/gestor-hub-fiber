@@ -13,6 +13,10 @@ Ao escolher uma rede, o mapa filtra os ativos, atualiza os indicadores e enquadr
 
 Usuários `viewer` podem selecionar e consultar redes. Apenas `admin` pode criar redes, agrupar origens ou alterar a rede de um ativo.
 
+## Atualização das camadas
+
+O painel do mapa mostra o nome e a data da última planta importada. Essa data pertence aos ativos operacionais — cabos, CTOs e demais elementos do KMZ. O mapa-base OpenStreetMap é carregado sob demanda e segue o ciclo de atualização e cache do próprio provedor; por isso não possui uma única data de versão dentro do Gestor Hub Fiber.
+
 ## Tipo e quantidade de fibras
 
 No painel de detalhes, administradores podem trocar o campo **Tipo**. Para **Cabo óptico** e **Rota planejada**, aparece o campo **Quantidade de fibras**, aceitando valores como 12, 24, 48 ou 144. O valor é salvo em `properties.fiber_count` e aparece no inventário.
@@ -21,7 +25,9 @@ O tipo escolhido manualmente é tratado como uma substituição explícita e per
 
 ## Busca de endereço
 
-A busca aceita texto livre, por exemplo `Rua Fumio Miyazi, Boqueirão, Praia Grande, SP`. Ela é executada somente ao pressionar o botão — não existe autocomplete. Ao selecionar um resultado, o mapa enquadra o endereço e posiciona um marcador para comparação visual com a rede.
+A busca aceita texto livre, por exemplo `Rua Fumio Miyazi, Boqueirão, Praia Grande, SP`, ou um CEP brasileiro. Ela é executada somente ao pressionar o botão — não existe autocomplete. Ao selecionar um resultado, o mapa enquadra o endereço e posiciona um marcador para comparação visual com a rede.
+
+Quando uma rede está selecionada, o seu `viewport` é enviado como viés geográfico. Resultados próximos daquela área passam a ter prioridade sem impedir uma busca fora dos limites. Se o usuário informar somente a rua, cidade e estado da rede são acrescentados internamente. Consultas contendo CEP são normalizadas pelo ViaCEP antes da obtenção das coordenadas, preservando eventual número informado pelo usuário.
 
 Na versão atual, a viabilidade é uma análise visual: o sistema não afirma automaticamente que um endereço é atendido. O cálculo de distância até cabos/CTOs e as regras comerciais serão um marco posterior.
 
@@ -29,6 +35,9 @@ O backend usa Nominatim por padrão, com:
 
 - autenticação obrigatória;
 - filtro de país para o Brasil;
+- filtro da camada de endereços, idioma português e remoção de duplicados;
+- prioridade geográfica pela rede selecionada;
+- expansão opcional de CEP pelo ViaCEP;
 - no máximo cinco resultados;
 - serialização global de chamadas, respeitando ao menos um segundo entre acessos ao provedor;
 - cache PostgreSQL por 30 dias, sem armazenar a consulta em texto puro;
@@ -38,8 +47,20 @@ Configuração:
 
 ```dotenv
 APP_GEOCODING_ENABLED=true
+APP_GEOCODING_PROVIDER=nominatim
 APP_GEOCODING_BASE_URL=https://nominatim.openstreetmap.org
+APP_VIACEP_ENABLED=true
 APP_GEOCODING_CACHE_DAYS=30
 ```
 
-O serviço público é adequado somente a uso interativo moderado. Produção com maior volume deve usar uma instância própria ou um provedor com SLA, mantendo a mesma interface configurável.
+O serviço público é adequado somente a uso interativo moderado. Produção com maior volume deve usar uma instância própria ou um provedor com SLA. O adaptador Geoapify já está disponível:
+
+```dotenv
+APP_GEOCODING_PROVIDER=geoapify
+APP_GEOCODING_BASE_URL=https://api.geoapify.com
+APP_GEOCODING_API_KEY=chave-fornecida-pelo-provedor
+```
+
+A chave permanece apenas no ambiente e nunca é enviada ao navegador. A troca de provedor não exige mudança de código ou da interface.
+
+Referências: [API de busca do Nominatim](https://nominatim.org/release-docs/latest/api/Search/), [política do serviço público Nominatim](https://operations.osmfoundation.org/policies/nominatim/), [ViaCEP](https://viacep.com.br/) e [Geoapify Geocoding API](https://apidocs.geoapify.com/docs/geocoding/forward-geocoding/).

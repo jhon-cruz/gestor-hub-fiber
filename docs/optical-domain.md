@@ -46,11 +46,12 @@ também podem:
 - vincular o equipamento a uma feição compatível do mapa;
 - editar identificação, fabricante, modelo, série e estado operacional;
 - alterar cada porta entre disponível, reservada, ocupada, danificada ou desativada;
+- conectar fibras às portas e rastrear a continuidade óptica;
 - navegar do equipamento para seu item geográfico.
 
 ## Evolução e limites
 
-Fibras individuais e fusões passaram a ser entidades relacionais na migration `0005`, conforme
-[cabos e fibras](fiber-topology.md). Ainda faltam as conexões entre fibras e portas de equipamentos,
-além do rastreamento e orçamento óptico ponta a ponta. A conectividade continuará fora do JSON
-genérico da feição geográfica.
+Fibras individuais e fusões passaram a ser entidades relacionais na migration `0005`; a migration
+`0006` adiciona os vínculos fibra–porta. Rastreamento e orçamento óptico são descritos em
+[cabos e fibras](fiber-topology.md). Ainda faltam validação espacial dos extremos e cálculo
+automático do comprimento geográfico. A conectividade permanece fora do JSON genérico da feição.

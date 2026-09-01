@@ -78,6 +78,10 @@ const state = {
   opticalDevices: [],
   selectedDevice: null,
   devicePorts: [],
+  devicePortLinks: [],
+  selectedPort: null,
+  portLinkFibers: [],
+  tracePort: null,
   cables: [],
   selectedCable: null,
   cableFibers: [],
@@ -415,6 +419,13 @@ async function loadFeatures(forceFit = false) {
   try {
     const collection = await request("/api/v1/map-features?limit=5000");
     state.features = collection.features;
+    if (collection.data_status?.latest_import_at) {
+      const imported = new Date(collection.data_status.latest_import_at).toLocaleString("pt-BR");
+      $("#map-data-status").textContent = `Planta: ${collection.data_status.latest_import_filename} · importada em ${imported}`;
+    } else {
+      $("#map-data-status").textContent = collection.data_status?.base_map
+        || "Mapa-base OpenStreetMap carregado sob demanda";
+    }
     renderFeatures();
     renderInventory();
     const selected = selectedMapFeatures();
@@ -572,14 +583,15 @@ function renderAddressResults(payload) {
     const label = document.createElement("strong");
     label.textContent = result.label;
     const meta = document.createElement("small");
-    meta.textContent = result.type || "Endereço";
+    const precision = result.precision ? ` · precisão ${result.precision}` : "";
+    meta.textContent = `${result.type || "Endereço"}${precision}`;
     button.append(label, meta);
     button.addEventListener("click", () => showAddressResult(result));
     return button;
   });
   const attribution = document.createElement("small");
   attribution.className = "address-attribution";
-  attribution.textContent = payload.attribution;
+  attribution.textContent = `${payload.attribution}${payload.network_bias ? " · priorizado pela rede selecionada" : ""}`;
   container.replaceChildren(...items, attribution);
   container.classList.remove("hidden");
 }
@@ -590,7 +602,10 @@ async function searchAddress(event) {
   const query = $("#address-search-input").value.trim();
   setBusy(form, true);
   try {
-    const payload = await request(`/api/v1/geocoding/search?q=${encodeURIComponent(query)}`);
+    const network = state.selectedNetworkId
+      ? `&network_id=${encodeURIComponent(state.selectedNetworkId)}`
+      : "";
+    const payload = await request(`/api/v1/geocoding/search?q=${encodeURIComponent(query)}${network}`);
     renderAddressResults(payload);
   } catch (error) {
     $("#address-results").textContent = error.message;
@@ -829,6 +844,7 @@ async function createOpticalDevice(event) {
 function renderDevicePorts() {
   const list = $("#device-ports-list");
   list.replaceChildren(...state.devicePorts.map((port) => {
+    const portLinks = state.devicePortLinks.filter((item) => item.port_id === port.id);
     const row = document.createElement("article");
     row.className = "device-port-row";
     const identity = document.createElement("div");
@@ -837,7 +853,10 @@ function renderDevicePorts() {
     name.className = `port-state ${port.status}`;
     name.textContent = port.label || `Porta ${port.position}`;
     const kind = document.createElement("small");
-    kind.textContent = `${port.port_kind.replaceAll("_", " ")} · posição ${port.position}`;
+    const linkDescription = portLinks.length
+      ? ` · ${portLinks.map((link) => `FO ${link.fiber.global_position}/${link.port_side.toUpperCase()}`).join(", ")}`
+      : " · sem fibra";
+    kind.textContent = `${port.port_kind.replaceAll("_", " ")} · posição ${port.position}${linkDescription}`;
     identity.append(name, kind);
     const select = document.createElement("select");
     for (const [value, label] of PORT_STATUS_OPTIONS) {
@@ -848,12 +867,40 @@ function renderDevicePorts() {
     }
     select.value = port.status;
     select.disabled = state.user.role !== "admin";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "button ghost small admin-only";
-    button.textContent = "Salvar";
-    button.addEventListener("click", () => updateOpticalPort(port, select.value, button));
-    row.append(identity, select, button);
+    const actions = document.createElement("div");
+    actions.className = "port-actions";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "button ghost small admin-only";
+    save.textContent = "Salvar";
+    save.addEventListener("click", () => updateOpticalPort(port, select.value, save));
+    actions.append(save);
+    const maximumLinks = port.port_kind === "adapter" ? 2 : 1;
+    if (portLinks.length < maximumLinks) {
+      const connect = document.createElement("button");
+      connect.type = "button";
+      connect.className = "button ghost small admin-only";
+      connect.textContent = "Conectar FO";
+      connect.addEventListener("click", () => openPortLink(port));
+      actions.append(connect);
+    }
+    for (const link of portLinks) {
+      const disconnect = document.createElement("button");
+      disconnect.type = "button";
+      disconnect.className = "button ghost small admin-only";
+      disconnect.textContent = `Descon. ${link.port_side.toUpperCase()}`;
+      disconnect.addEventListener("click", () => deletePortLink(link));
+      actions.append(disconnect);
+    }
+    if (portLinks.length) {
+      const trace = document.createElement("button");
+      trace.type = "button";
+      trace.className = "button ghost small";
+      trace.textContent = "Rastrear";
+      trace.addEventListener("click", () => openTrace(port));
+      actions.append(trace);
+    }
+    row.append(identity, select, actions);
     return row;
   }));
 }
@@ -875,9 +922,13 @@ async function openDevice(device) {
   $("#device-detail-status").disabled = !canEdit;
   $("#device-ports-summary").textContent = "Carregando portas...";
   $("#device-ports-list").innerHTML = '<span class="field-hint">Carregando...</span>';
-  $("#device-detail-dialog").showModal();
+  if (!$("#device-detail-dialog").open) $("#device-detail-dialog").showModal();
   try {
-    state.devicePorts = await request(`/api/v1/optical-devices/${device.id}/ports`);
+    [state.devicePorts, state.devicePortLinks, state.cables] = await Promise.all([
+      request(`/api/v1/optical-devices/${device.id}/ports`),
+      request(`/api/v1/fiber-port-links?device_id=${device.id}`),
+      request("/api/v1/optical-cables?limit=2000"),
+    ]);
     $("#device-ports-summary").textContent = [
       `${device.port_summary.available} disponíveis`,
       `${device.port_summary.occupied} ocupadas`,
@@ -886,6 +937,179 @@ async function openDevice(device) {
     renderDevicePorts();
   } catch (error) {
     $("#device-ports-list").textContent = error.message;
+  }
+}
+
+async function openPortLink(port) {
+  state.selectedPort = port;
+  $("#port-link-label").value = `${state.selectedDevice.name} · ${port.label || `Porta ${port.position}`}`;
+  $("#port-link-side-field").classList.toggle("hidden", port.port_kind !== "adapter");
+  const occupiedSides = state.devicePortLinks
+    .filter((item) => item.port_id === port.id)
+    .map((item) => item.port_side);
+  $("#port-link-port-side").value = ["a", "b"].find((side) => !occupiedSides.includes(side)) || "a";
+  $("#port-link-error").textContent = "";
+  $("#port-link-cable").replaceChildren(...state.cables.map((cable) => {
+    const option = document.createElement("option");
+    option.value = cable.id;
+    option.textContent = `${cable.name} · ${cable.fiber_count} FO`;
+    return option;
+  }));
+  await loadPortLinkFibers();
+  $("#port-link-dialog").showModal();
+}
+
+async function loadPortLinkFibers() {
+  const cableId = $("#port-link-cable").value;
+  if (!cableId) {
+    state.portLinkFibers = [];
+    $("#port-link-fiber").replaceChildren();
+    return;
+  }
+  try {
+    const fibers = await request(`/api/v1/optical-cables/${cableId}/fibers`);
+    state.portLinkFibers = fibers.filter((fiber) => (fiber.connected_ends || []).length < 2);
+    $("#port-link-fiber").replaceChildren(...state.portLinkFibers.map((fiber) => {
+      const option = document.createElement("option");
+      option.value = fiber.id;
+      const free = ["a", "b"].filter((side) => !fiber.connected_ends.includes(side));
+      option.textContent = `${fiberLabel(fiber)} · ponta ${free.join("/").toUpperCase()} livre`;
+      return option;
+    }));
+    updatePortLinkEnds();
+  } catch (error) {
+    $("#port-link-error").textContent = error.message;
+  }
+}
+
+function updatePortLinkEnds() {
+  const fiber = state.portLinkFibers.find((item) => item.id === $("#port-link-fiber").value);
+  const free = ["a", "b"].filter((side) => !fiber?.connected_ends?.includes(side));
+  $("#port-link-fiber-end").replaceChildren(...free.map((side) => {
+    const option = document.createElement("option");
+    option.value = side;
+    option.textContent = side.toUpperCase();
+    return option;
+  }));
+}
+
+async function createPortLink(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#port-link-error").textContent = "";
+  setBusy(form, true);
+  try {
+    await request("/api/v1/fiber-port-links", {
+      method: "POST",
+      body: JSON.stringify({
+        fiber_id: $("#port-link-fiber").value,
+        fiber_end: $("#port-link-fiber-end").value,
+        port_id: state.selectedPort.id,
+        port_side: state.selectedPort.port_kind === "adapter" ? $("#port-link-port-side").value : "a",
+        insertion_loss_db: Number($("#port-link-loss").value),
+        notes: $("#port-link-notes").value.trim() || null,
+      }),
+    });
+    form.reset();
+    $("#port-link-loss").value = "0.2";
+    $("#port-link-dialog").close();
+    await openDevice(state.selectedDevice);
+    toast("Fibra conectada à porta óptica.");
+  } catch (error) {
+    $("#port-link-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+async function deletePortLink(link) {
+  if (!window.confirm("Desconectar esta fibra da porta? O registro poderá ser criado novamente.")) return;
+  try {
+    await request(`/api/v1/fiber-port-links/${link.id}`, {method: "DELETE"});
+    await openDevice(state.selectedDevice);
+    toast("Fibra desconectada da porta.");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function openTrace(port) {
+  state.tracePort = port;
+  $("#trace-title").textContent = `${state.selectedDevice.name} · ${port.label || `Porta ${port.position}`}`;
+  $("#trace-dialog").showModal();
+  await calculateTrace();
+}
+
+async function calculateTrace(event) {
+  event?.preventDefault();
+  if (!state.tracePort) return;
+  const container = $("#trace-results");
+  container.innerHTML = '<span class="field-hint">Calculando continuidade...</span>';
+  try {
+    const tx = Number($("#trace-tx-power").value);
+    const rx = Number($("#trace-rx-min").value);
+    const payload = await request(
+      `/api/v1/optical-traces/from-port/${state.tracePort.id}?tx_power_dbm=${tx}&receiver_min_dbm=${rx}`,
+    );
+    if (!payload.paths.length) {
+      container.innerHTML = '<div class="trace-empty"><strong>Caminho incompleto</strong><small>Conecte fibras, fusões e a porta de destino para concluir o rastreamento.</small></div>';
+      return;
+    }
+    container.replaceChildren(...payload.paths.map((path) => {
+      const card = document.createElement("article");
+      card.className = "trace-card";
+      const status = !path.complete ? "incompleto" : path.margin_db >= 3 ? "viável" : "margem baixa";
+      const header = document.createElement("header");
+      const heading = document.createElement("div");
+      const destination = document.createElement("strong");
+      destination.textContent = path.destination;
+      const pathMeta = document.createElement("small");
+      pathMeta.textContent = `${path.length_m.toLocaleString("pt-BR")} m · ${path.steps.length} etapas`;
+      heading.append(destination, pathMeta);
+      const badge = document.createElement("span");
+      badge.className = `trace-status ${path.complete && path.margin_db >= 3 ? "ok" : "warning"}`;
+      badge.textContent = status;
+      header.append(heading, badge);
+      const metrics = document.createElement("div");
+      metrics.className = "trace-metrics";
+      for (const [label, value] of [
+        ["Perda total", `${path.total_loss_db.toFixed(2)} dB`],
+        ["Potência recebida", `${path.received_power_dbm.toFixed(2)} dBm`],
+        ["Margem", `${path.margin_db.toFixed(2)} dB`],
+      ]) {
+        const metric = document.createElement("span");
+        const metricLabel = document.createElement("small");
+        metricLabel.textContent = label;
+        const metricValue = document.createElement("strong");
+        metricValue.textContent = value;
+        metric.append(metricLabel, metricValue);
+        metrics.append(metric);
+      }
+      const steps = document.createElement("ol");
+      for (const step of path.steps) {
+        const item = document.createElement("li");
+        const stepLabel = document.createElement("span");
+        stepLabel.textContent = step.label;
+        const loss = document.createElement("strong");
+        loss.textContent = `${step.loss_db.toFixed(2)} dB${step.estimated ? " *" : ""}`;
+        item.append(stepLabel, loss);
+        steps.append(item);
+      }
+      card.append(header, metrics, steps);
+      if (path.estimated) {
+        const estimated = document.createElement("small");
+        estimated.className = "trace-notice";
+        estimated.textContent = "* Há valores estimados neste caminho.";
+        card.append(estimated);
+      }
+      return card;
+    }));
+    const notice = document.createElement("p");
+    notice.className = "dialog-note";
+    notice.textContent = payload.notice;
+    container.append(notice);
+  } catch (error) {
+    container.textContent = error.message;
   }
 }
 
@@ -1731,6 +1955,10 @@ function wireEvents() {
   $("#device-create-form").addEventListener("submit", createOpticalDevice);
   $("#device-edit-form").addEventListener("submit", updateOpticalDevice);
   $("#device-map-button").addEventListener("click", openSelectedDeviceOnMap);
+  $("#port-link-cable").addEventListener("change", loadPortLinkFibers);
+  $("#port-link-fiber").addEventListener("change", updatePortLinkEnds);
+  $("#port-link-form").addEventListener("submit", createPortLink);
+  $("#trace-form").addEventListener("submit", calculateTrace);
   $("#cable-search").addEventListener("input", renderCables);
   $("#cable-class-filter").addEventListener("change", renderCables);
   $("#add-cable-button").addEventListener("click", () => {

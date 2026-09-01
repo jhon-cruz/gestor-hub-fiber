@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import AdminUser, CurrentUser, DbSession
+from app.models.fiber_topology import FiberPortLink
 from app.models.map_feature import MapFeature
 from app.models.optical import OpticalDevice, OpticalPort
 from app.schemas.optical import OpticalDeviceCreate, OpticalDeviceUpdate, OpticalPortUpdate
@@ -287,6 +288,13 @@ def update_port(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="optical port not found")
     if port.revision != payload.expected_revision:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="stale port revision")
+    if payload.status not in {None, "occupied"} and db.scalar(
+        select(FiberPortLink.id).where(FiberPortLink.port_id == port.id)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="connected port must remain occupied",
+        )
     before = _port_snapshot(port)
     for key, value in payload.model_dump(exclude_unset=True, exclude={"expected_revision"}).items():
         setattr(port, key, value)

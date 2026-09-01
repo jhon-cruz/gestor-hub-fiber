@@ -5,14 +5,14 @@
 ## Status geral
 
 - Fase atual: Fase 2 — Domínio óptico e operação geográfica
-- Estado: fundação operacional; redes por localidade, geocodificação e edição técnica implementadas
+- Estado: núcleo óptico operacional; busca geográfica, continuidade e orçamento óptico implementados
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.8.0`
+- Versão atual: `0.9.0`
 
 ## Entregue nesta fase
 
@@ -69,6 +69,13 @@
 - [x] Fusões com duas extremidades A/B e restrição única que impede conexões incompatíveis.
 - [x] Interface de cabos/fibras com criação, consulta, ocupação e registro de fusões.
 - [x] Símbolos SVG distintos para CTO, caixa de emenda, splitter, OLT, DIO e ONT/ONU no mapa.
+- [x] Busca brasileira melhorada com viés pela rede, normalização de CEP, precisão visível e provedor substituível.
+- [x] Adaptadores de geocodificação Nominatim e Geoapify, mantendo a chave premium somente no backend.
+- [x] Vínculo auditado entre extremidades A/B das fibras e portas/lados dos equipamentos.
+- [x] Rastreamento de continuidade por fibras, fusões, terminações, DIOs e splitters.
+- [x] Orçamento óptico com perda acumulada, potência recebida, margem e indicação de valores estimados.
+- [x] Interface administrativa para conectar/desconectar fibra–porta e interface de rastreamento para ambos os papéis.
+- [x] Data e arquivo da última planta importada visíveis no mapa, separados do mapa-base OpenStreetMap dinâmico.
 
 ## Validação executada
 
@@ -77,11 +84,11 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 16 testes aprovados.
+- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 17 testes aprovados.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.
-- Migrações até `0005` aplicadas e reversão/reaplicação da topologia de fibras validada no banco de testes.
+- Migrações até `0006` aplicadas e reversão/reaplicação do vínculo fibra–porta validada no banco de testes.
 - Porta 3000: não utilizada.
 
 ## Regras de autorização atuais
@@ -98,6 +105,8 @@
 | Criar/editar equipamentos e portas ópticas | sim | não |
 | Consultar cabos, fibras e fusões | sim | sim |
 | Criar/editar cabos, fibras e fusões | sim | não |
+| Consultar rastreamento e orçamento óptico | sim | sim |
+| Conectar/desconectar fibras e portas | sim | não |
 | Criar usuários | sim | não |
 
 Não existe usuário ou senha padrão versionado. O primeiro administrador pode ser criado na tela inicial ou interativamente com `make create-admin`.
@@ -109,7 +118,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - [x] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber` (commit inicial `bdecf27`).
 - [ ] Executar a matriz FiberQ nos containers QGIS 3/Qt5 e QGIS 4/Qt6 na CI.
 - [x] Criar a interface web multiusuário para acompanhamento no navegador.
-- [ ] Completar o modelo óptico: conexão fibra-porta, rastreamento ponta a ponta e orçamento óptico.
+- [x] Completar o modelo óptico: conexão fibra-porta, rastreamento ponta a ponta e orçamento óptico.
 - [ ] Obter documentação/ambientes de homologação do SGP e IXC.
 - [ ] Implementar conectores SGP e IXC sem inventar endpoints não documentados.
 - [ ] Certificar instalação, backup, restauração, firewall e operação em uma VM/servidor Ubuntu Server 26.04 real.
@@ -139,6 +148,8 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 
 ### 2026-09-01
 
+- Busca geográfica brasileira aprimorada e arquitetura de provedores preparada para a versão 0.9.0.
+- Vínculos fibra–porta, rastreamento ponta a ponta e orçamento óptico implementados na versão 0.9.0.
 - Cabos, tubos, fibras, fusões e novos símbolos cartográficos implementados para a versão 0.8.0.
 - Interface da topologia óptica e símbolos adaptativos por nível de zoom validados no navegador.
 - Migração `0005` validada nos dois sentidos e suíte ampliada para 16 testes.
@@ -161,4 +172,4 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 
 ## Próxima atualização prevista
 
-Conectar fibras às portas de equipamentos e splitters, implementar rastreamento ponta a ponta e orçamento óptico.
+Validar extremos pela geometria, calcular comprimentos com PostGIS e implementar análise automática de viabilidade de novos endereços.

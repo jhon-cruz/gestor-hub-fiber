@@ -283,6 +283,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .map-heading h1 { margin: 6px 0 4px; font-family: Georgia, serif; font-size: 36px; font-weight: 400; letter-spacing: -.025em; }
 .map-heading > p:nth-of-type(2) { margin: 0; color: var(--muted); font-size: 13px; }
 .network-switcher { pointer-events: auto; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.map-data-status { display: block; max-width: 300px; margin-top: 5px; color: var(--muted); font-size: 8px; line-height: 1.35; }
 .network-switcher label { gap: 5px; }
 .network-switcher label > span { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .network-switcher select { min-height: 38px; padding: 0 10px; font-size: 12px; font-weight: 700; }
@@ -293,6 +294,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .address-search-panel form > span { color: var(--mint); font-size: 18px; }
 .address-search-panel input { min-height: 38px; border: 0; padding: 0 4px; background: transparent; box-shadow: none; font-size: 11px; }
 .address-search-panel .button { min-height: 36px; }
+.address-search-hint { display: block; margin: 6px 9px 0 30px; color: var(--muted); font-size: 8px; line-height: 1.35; }
 .address-results { max-height: 270px; overflow: auto; display: grid; gap: 5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .address-result { display: grid; gap: 3px; width: 100%; border: 0; border-radius: 7px; padding: 9px 10px; color: var(--ink); text-align: left; background: transparent; }
 .address-result:hover { background: rgb(0 143 255 / 9%); }
@@ -434,7 +436,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .device-ports-heading h3 { margin-bottom: 3px; }
 .device-ports-heading small { color: var(--muted); font-size: 10px; }
 .device-ports-list { max-height: 360px; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-right: 3px; }
-.device-port-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(115px, .8fr) auto; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; padding: 8px; background: var(--paper); }
+.device-port-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(105px, .65fr) minmax(105px, auto); align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; padding: 8px; background: var(--paper); }
 .device-port-row label { min-width: 0; }
 .device-port-row input, .device-port-row select { min-height: 34px; padding: 7px 8px; font-size: 10px; }
 .device-port-identity { min-width: 0; }
@@ -447,6 +449,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .port-state.occupied::before { background: var(--mint); }
 .port-state.reserved::before { background: #e5a925; }
 .port-state.damaged::before { background: var(--danger); }
+.port-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 
 .cable-detail-summary { display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: end; gap: 10px; margin-top: 22px; }
 .cable-detail-summary > span { display: grid; gap: 4px; border-radius: 9px; padding: 11px; background: var(--paper); }
@@ -461,6 +464,27 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .fiber-identity small { margin-top: 2px; color: var(--muted); font-size: 8px; }
 .fiber-row select { min-height: 32px; padding: 6px 8px; font-size: 9px; }
 .fiber-row .button { min-height: 31px; padding: 0 8px; font-size: 9px; }
+
+.trace-settings { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 10px; margin: 22px 0 16px; }
+.trace-results { max-height: 520px; overflow: auto; display: grid; gap: 10px; padding-right: 3px; }
+.trace-card { border: 1px solid var(--line); border-radius: 11px; padding: 14px; background: var(--paper); }
+.trace-card header { display: flex; justify-content: space-between; gap: 12px; }
+.trace-card header strong, .trace-card header small { display: block; }
+.trace-card header small { margin-top: 4px; color: var(--muted); font-size: 9px; }
+.trace-status { align-self: start; border-radius: 999px; padding: 5px 8px; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.trace-status.ok { color: #087555; background: #dff7ee; }
+.trace-status.warning { color: #8b5311; background: #fff0d2; }
+.trace-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 12px 0; }
+.trace-metrics span { display: grid; gap: 3px; border-radius: 8px; padding: 9px; background: var(--white); }
+.trace-metrics small { color: var(--muted); font-size: 8px; }
+.trace-metrics strong { font-size: 12px; }
+.trace-card ol { display: grid; gap: 5px; margin: 0; padding-left: 20px; }
+.trace-card li { padding-left: 2px; color: var(--muted); font-size: 9px; }
+.trace-card li span { color: var(--ink); }
+.trace-card li strong { float: right; margin-left: 10px; color: var(--muted); font-weight: 600; }
+.trace-notice { display: block; margin-top: 10px; color: var(--muted); font-size: 8px; }
+.trace-empty { display: grid; gap: 5px; border: 1px dashed var(--line); border-radius: 10px; padding: 24px; color: var(--muted); }
+.trace-empty strong { color: var(--ink); }
 
 :root[data-theme="dark"] .auth-panel { background: #081a29; }
 :root[data-theme="dark"] label > span:first-child { color: #b3c5d4; }
@@ -564,11 +588,13 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .inventory-table th:nth-child(5), .inventory-table td:nth-child(5) { display: none; }
   .device-ports-list { grid-template-columns: 1fr; }
   .device-port-row { grid-template-columns: 1fr 120px; }
-  .device-port-row .button { grid-column: 1 / -1; }
+  .port-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .cable-detail-summary { grid-template-columns: 1fr 1fr; }
   .fiber-list { grid-template-columns: 1fr; }
   .fiber-row { grid-template-columns: 1fr 110px; }
   .fiber-row .button { grid-column: auto; }
+  .trace-settings { grid-template-columns: 1fr; }
+  .trace-metrics { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

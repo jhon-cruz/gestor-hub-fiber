@@ -1,8 +1,10 @@
 """Relational cable, tube, fiber and splice topology."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -19,6 +21,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.optical import OpticalPort
 
 
 class OpticalCable(Base):
@@ -139,6 +144,9 @@ class OpticalFiber(Base):
     endpoints: Mapped[list[FiberConnectionEndpoint]] = relationship(
         back_populates="fiber", passive_deletes=True
     )
+    port_links: Mapped[list[FiberPortLink]] = relationship(
+        back_populates="fiber", passive_deletes=True
+    )
 
 
 class FiberConnection(Base):
@@ -199,3 +207,45 @@ class FiberConnectionEndpoint(Base):
     role: Mapped[str] = mapped_column(String(1), nullable=False)
     connection: Mapped[FiberConnection] = relationship(back_populates="endpoints")
     fiber: Mapped[OpticalFiber] = relationship(back_populates="endpoints")
+
+
+class FiberPortLink(Base):
+    """Termination between one fiber extremity and one side of an equipment port."""
+
+    __tablename__ = "fiber_port_link"
+    __table_args__ = (
+        CheckConstraint("fiber_end IN ('a', 'b')", name="ck_fiber_port_link_end"),
+        CheckConstraint("port_side IN ('a', 'b')", name="ck_fiber_port_link_side"),
+        CheckConstraint("insertion_loss_db >= 0", name="ck_fiber_port_link_loss"),
+        UniqueConstraint("fiber_id", "fiber_end", name="uq_fiber_port_link_fiber_end"),
+        UniqueConstraint("port_id", "port_side", name="uq_fiber_port_link_port_side"),
+        Index("ix_fiber_port_link_fiber", "fiber_id"),
+        Index("ix_fiber_port_link_port", "port_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fiber_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("optical_fiber.id", ondelete="RESTRICT"), nullable=False
+    )
+    fiber_end: Mapped[str] = mapped_column(String(1), nullable=False)
+    port_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("optical_port.id", ondelete="CASCADE"), nullable=False
+    )
+    port_side: Mapped[str] = mapped_column(String(1), nullable=False, default="a")
+    insertion_loss_db: Mapped[float] = mapped_column(Float, nullable=False, default=0.2)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
+    )
+    updated_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    fiber: Mapped[OpticalFiber] = relationship(back_populates="port_links")
+    port: Mapped[OpticalPort] = relationship(back_populates="fiber_links")

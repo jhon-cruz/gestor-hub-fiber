@@ -1,9 +1,11 @@
 """Explicit optical equipment and port-capacity domain models."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -19,6 +21,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.fiber_topology import FiberPortLink
 
 
 class OpticalDeviceType(StrEnum):
@@ -130,3 +135,6 @@ class OpticalPort(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
     device: Mapped[OpticalDevice] = relationship(back_populates="ports")
+    fiber_links: Mapped[list[FiberPortLink]] = relationship(
+        back_populates="port", cascade="all, delete-orphan", passive_deletes=True
+    )

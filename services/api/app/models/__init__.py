@@ -5,6 +5,7 @@ from app.models.fiber_topology import (
     CableTube,
     FiberConnection,
     FiberConnectionEndpoint,
+    FiberPortLink,
     OpticalCable,
     OpticalFiber,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "CableTube",
     "FiberConnection",
     "FiberConnectionEndpoint",
+    "FiberPortLink",
     "MapFeature",
     "MapImport",
     "OpticalDevice",
