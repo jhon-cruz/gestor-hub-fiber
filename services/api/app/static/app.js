@@ -79,6 +79,29 @@ function toggleTheme() {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
 }
 
+function preferredMapTheme() {
+  return localStorage.getItem("gestorHubMapTheme") === "gray" ? "gray" : "light";
+}
+
+function applyMapTheme(theme, persist = false) {
+  const isGray = theme === "gray";
+  document.documentElement.dataset.mapTheme = isGray ? "gray" : "light";
+  const button = $("#map-theme-toggle");
+  if (button) {
+    button.setAttribute("aria-pressed", String(isGray));
+    button.setAttribute(
+      "aria-label", isGray ? "Usar mapa claro" : "Ativar mapa em tons de cinza",
+    );
+    button.querySelector("span").textContent = isGray ? "◑" : "◐";
+    button.lastChild.textContent = isGray ? " Mapa claro" : " Mapa em cinza";
+  }
+  if (persist) localStorage.setItem("gestorHubMapTheme", isGray ? "gray" : "light");
+}
+
+function toggleMapTheme() {
+  applyMapTheme(document.documentElement.dataset.mapTheme === "gray" ? "light" : "gray", true);
+}
+
 function setStatusOptions(select) {
   select.replaceChildren(...STATUS_OPTIONS.map(([value, label]) => {
     const option = document.createElement("option");
@@ -841,6 +864,7 @@ function wireEvents() {
   $("#logout-button").addEventListener("click", () => logout());
   $("#refresh-button").addEventListener("click", () => loadFeatures(state.view === "map"));
   $("#theme-toggle").addEventListener("click", toggleTheme);
+  $("#map-theme-toggle").addEventListener("click", toggleMapTheme);
   $("#feature-search").addEventListener("input", () => renderFeatures());
   $("#add-feature-button").addEventListener("click", () => $("#feature-dialog").showModal());
   $("#feature-create-form").addEventListener("submit", beginDrawing);
@@ -885,6 +909,7 @@ function wireEvents() {
 
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(preferredTheme());
+  applyMapTheme(preferredMapTheme());
   setStatusOptions($("#feature-status"));
   setStatusOptions($("#detail-status"));
   setStatusOptions($("#kmz-default-status"));

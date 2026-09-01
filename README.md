@@ -8,7 +8,7 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 
 - API FastAPI em Ubuntu 26.04;
 - interface web responsiva com mapa interativo;
-- temas claro e escuro com preferência persistente no navegador;
+- temas claro e escuro com preferência persistente no navegador e ajuste independente do mapa;
 - inventário pesquisável com filtros por tipo e status e acesso direto ao mapa;
 - PostgreSQL 18 + PostGIS 3.6;
 - autenticação por login e senha com token de curta duração;

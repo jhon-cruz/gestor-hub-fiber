@@ -260,6 +260,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .map-stage { position: relative; min-height: 0; overflow: hidden; }
 #map { position: absolute; inset: 0; z-index: 1; background: #dce8f1; }
 .leaflet-tile-pane { filter: saturate(.62) contrast(.93) brightness(1.03); }
+:root[data-map-theme="gray"] .leaflet-tile-pane { filter: grayscale(.82) saturate(.22) brightness(.78) contrast(1.08); }
 .leaflet-control-attribution { font-size: 9px !important; }
 .leaflet-control-zoom { margin-left: 22px !important; margin-bottom: 22px !important; border: 0 !important; box-shadow: var(--shadow-soft) !important; }
 .leaflet-control-zoom a { color: var(--forest) !important; border-color: var(--line) !important; }
@@ -281,7 +282,10 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .stat-icon.amber { color: var(--mint); background: #e8f4ff; }
 .stat-icon.violet { color: #637a91; background: #edf2f6; }
 
-.map-controls { position: absolute; z-index: 500; right: 28px; bottom: 28px; }
+.map-controls { position: absolute; z-index: 500; right: 28px; bottom: 28px; display: flex; gap: 8px; }
+.map-theme-button { color: var(--ink); border-color: var(--line); background: rgb(255 255 255 / 92%); box-shadow: var(--shadow-soft); backdrop-filter: blur(10px); }
+:root[data-theme="dark"] .map-theme-button { background: rgb(8 27 42 / 92%); }
+.map-theme-button[aria-pressed="true"] { color: white; border-color: var(--mint); background: var(--mint); }
 .draw-toolbar { position: absolute; z-index: 800; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 10px 12px 10px 16px; color: white; background: var(--forest-deep); box-shadow: var(--shadow); }
 .draw-toolbar div { min-width: 180px; }
 .draw-toolbar strong, .draw-toolbar small { display: block; }
@@ -406,7 +410,6 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 :root[data-theme="dark"] .search-box kbd { color: #88a0b4; background: #10293d; }
 :root[data-theme="dark"] .avatar { color: #dff9ff; background: #164d67; }
 :root[data-theme="dark"] #map { background: #081824; }
-:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(.9) hue-rotate(175deg) saturate(.55) brightness(.65) contrast(1.2); }
 :root[data-theme="dark"] .leaflet-control-zoom a { color: var(--ink) !important; background: var(--white) !important; }
 :root[data-theme="dark"] .leaflet-control-attribution { color: #8aa2b5; background: rgb(5 17 30 / 80%) !important; }
 :root[data-theme="dark"] .leaflet-control-attribution a { color: var(--blue); }

@@ -47,8 +47,10 @@
 - [x] Cores, estilos, descrições e hierarquia de pastas KML preservados.
 - [x] Proteções contra ZIP bomb, path traversal e XML malicioso.
 - [x] Limite de visualização ampliado para 5.000 elementos e consulta espacial otimizada sem N+1.
-- [x] Tema escuro/claro persistente, incluindo mapa, autenticação, modais e formulários.
+- [x] Tema escuro/claro persistente para autenticação, navegação, inventário, modais e formulários.
+- [x] Tema do mapa separado do sistema: claro por padrão e cinza suave opcional por usuário.
 - [x] Visão inicial de inventário com pesquisa, filtros, resumo e navegação direta ao mapa.
+- [x] Tema e inventário v0.4.0 publicados no commit `bfdf485`.
 
 ## Validação executada
 
