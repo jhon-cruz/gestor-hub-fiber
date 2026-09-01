@@ -153,7 +153,20 @@
             <p class="overline">Território operacional</p>
             <h1>Mapa da rede</h1>
             <p id="map-summary">Carregando ativos geográficos...</p>
+            <div class="network-switcher">
+              <label><span>Rede</span><select id="network-select" aria-label="Selecionar rede"><option value="">Todas as redes</option></select></label>
+              <button id="add-network-button" class="icon-button admin-only" type="button" aria-label="Criar rede">＋</button>
+            </div>
           </div>
+
+          <section class="address-search-panel" aria-label="Busca de endereço">
+            <form id="address-search-form">
+              <span aria-hidden="true">⌖</span>
+              <input id="address-search-input" minlength="3" maxlength="200" placeholder="Rua, bairro, cidade e estado" aria-label="Buscar endereço" required>
+              <button class="button primary small" type="submit">Buscar endereço</button>
+            </form>
+            <div id="address-results" class="address-results hidden" aria-live="polite"></div>
+          </section>
 
           <section class="stats-grid" aria-label="Resumo do inventário">
             <article><span class="stat-icon green">●</span><div><small>Ativos no mapa</small><strong id="stat-total">0</strong></div><em id="stat-total-label">sincronizado</em></article>
@@ -163,7 +176,6 @@
           </section>
 
           <div class="map-controls">
-            <button id="map-theme-toggle" class="button map-theme-button" type="button" aria-label="Ativar mapa em tons de cinza" aria-pressed="false"><span aria-hidden="true">◐</span> Mapa em cinza</button>
             <button id="add-feature-button" class="button primary admin-only"><span aria-hidden="true">＋</span> Adicionar ativo</button>
           </div>
 
@@ -180,8 +192,10 @@
             </header>
             <form id="feature-edit-form">
               <label><span>Nome</span><input id="detail-name" required maxlength="160"></label>
-              <label><span>Tipo</span><input id="detail-type" readonly></label>
+              <label><span>Tipo</span><select id="detail-type"></select></label>
               <label><span>Status</span><select id="detail-status"></select></label>
+              <label id="detail-fiber-field" class="hidden"><span>Quantidade de fibras</span><input id="detail-fiber-count" type="number" min="1" max="6912" step="1" placeholder="Ex.: 12, 24, 48"></label>
+              <label><span>Rede</span><select id="detail-network"><option value="">Sem rede definida</option></select></label>
               <div class="detail-meta"><span>Revisão</span><strong id="detail-revision">—</strong></div>
               <div class="detail-meta"><span>ID</span><code id="detail-id">—</code></div>
               <div class="admin-only panel-actions">
@@ -209,7 +223,7 @@
             <article><small>Total de elementos</small><strong id="inventory-total">0</strong><span>ativos geográficos</span></article>
             <article><small>Infraestrutura óptica</small><strong id="inventory-optical">0</strong><span>CTOs, caixas, OLTs e DIOs</span></article>
             <article><small>Cabos e rotas</small><strong id="inventory-routes">0</strong><span>segmentos lineares</span></article>
-            <article><small>Capacidade informada</small><strong id="inventory-capacity">0</strong><span>elementos com capacidade</span></article>
+            <article><small>Fibras informadas</small><strong id="inventory-capacity">0</strong><span>cabos e rotas dimensionados</span></article>
           </section>
 
           <section class="inventory-card">
@@ -221,7 +235,7 @@
             </div>
             <div class="inventory-table-wrap">
               <table class="inventory-table">
-                <thead><tr><th>Elemento</th><th>Tipo</th><th>Status</th><th>Capacidade</th><th>Origem</th><th><span class="sr-only">Ação</span></th></tr></thead>
+                <thead><tr><th>Elemento</th><th>Tipo</th><th>Status</th><th>Capacidade / fibras</th><th>Origem</th><th><span class="sr-only">Ação</span></th></tr></thead>
                 <tbody id="inventory-table-body"></tbody>
               </table>
               <div id="inventory-empty" class="inventory-empty hidden"><span>▦</span><strong>Nenhum elemento encontrado</strong><small>Ajuste os filtros ou importe uma planta KMZ.</small></div>
@@ -239,11 +253,26 @@
           <label><span>Tipo</span><select id="feature-type"><option value="cto">CTO</option><option value="pole">Poste</option><option value="splice_box">Caixa de emenda</option><option value="splitter">Splitter</option><option value="cable">Cabo óptico</option><option value="route">Rota planejada</option><option value="other">Outro</option></select></label>
           <label><span>Status</span><select id="feature-status"></select></label>
           <label><span>Geometria</span><select id="geometry-type"><option value="Point">Ponto</option><option value="LineString">Linha</option><option value="Polygon">Área</option></select></label>
-          <label><span>Capacidade</span><input id="feature-capacity" type="number" min="0" step="1" placeholder="Opcional"></label>
+          <label><span>Capacidade / fibras</span><input id="feature-capacity" type="number" min="0" step="1" placeholder="Ex.: 12, 24, 48"></label>
           <label class="span-2"><span>Observações</span><textarea id="feature-notes" rows="3" maxlength="500" placeholder="Informações operacionais opcionais"></textarea></label>
         </div>
         <p class="dialog-note">Após continuar, marque a posição ou o traçado diretamente no mapa.</p>
         <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Continuar para o mapa →</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="network-dialog" class="modal">
+      <form id="network-create-form" method="dialog">
+        <header><div><p class="overline">Área de atendimento</p><h2>Criar rede</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label class="span-2"><span>Nome da rede</span><input id="network-name" maxlength="120" placeholder="Ex.: Praia Grande" required></label>
+          <label><span>Cidade</span><input id="network-city" maxlength="120" placeholder="Praia Grande" required></label>
+          <label><span>Estado</span><input id="network-state" maxlength="80" placeholder="São Paulo" required></label>
+          <label class="span-2"><span>Vincular elementos importados</span><select id="network-source"><option value="">Nenhuma origem — usar a área visível do mapa</option></select></label>
+        </div>
+        <p class="dialog-note">Ao selecionar uma origem KMZ, todos os elementos dela serão agrupados nesta rede e o mapa usará automaticamente os limites do desenho.</p>
+        <p id="network-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Criar e abrir rede</button></footer>
       </form>
     </dialog>
 

@@ -4,15 +4,15 @@
 
 ## Status geral
 
-- Fase atual: transição da Fase 1 para a Fase 2 — Domínio óptico
-- Estado: fundação operacional; primeira camada relacional do domínio óptico implementada
+- Fase atual: Fase 2 — Domínio óptico e operação geográfica
+- Estado: fundação operacional; redes por localidade, geocodificação e edição técnica implementadas
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.5.0`
+- Versão atual: `0.6.0`
 
 ## Entregue nesta fase
 
@@ -48,7 +48,7 @@
 - [x] Proteções contra ZIP bomb, path traversal e XML malicioso.
 - [x] Limite de visualização ampliado para 5.000 elementos e consulta espacial otimizada sem N+1.
 - [x] Tema escuro/claro persistente para autenticação, navegação, inventário, modais e formulários.
-- [x] Tema do mapa separado do sistema: claro por padrão e cinza suave opcional por usuário.
+- [x] Tema escuro mantido na interface e mapa-base fixado em modo claro para preservar a leitura cartográfica.
 - [x] Ajuste independente do mapa publicado no commit `0e6bdc8`.
 - [x] Visão inicial de inventário com pesquisa, filtros, resumo e navegação direta ao mapa.
 - [x] Tema e inventário v0.4.0 publicados no commit `bfdf485`.
@@ -56,6 +56,10 @@
 - [x] Portas geradas por capacidade, com estados, revisão concorrente e auditoria.
 - [x] Vínculo UUID entre equipamento óptico e feição geográfica de tipo compatível.
 - [x] Domínio óptico inicial v0.5.0 publicado no commit `1b20e03`.
+- [x] Redes geográficas nomeadas, com agrupamento por origem KMZ e navegação automática pelo limite espacial.
+- [x] Busca autenticada de endereços brasileiros, com cache, limitação de chamadas e atribuição OpenStreetMap.
+- [x] Edição administrativa do tipo de ativo, rede e quantidade de fibras em cabos/rotas.
+- [x] Tipografia dos painéis de resumo do mapa ampliada para leitura operacional.
 
 ## Validação executada
 
@@ -64,11 +68,11 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/domínio óptico: 12 testes aprovados.
+- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação: 14 testes aprovados.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.
-- Migration inicial aplicada, revertida e reaplicada com sucesso.
+- Migrações até `0004` aplicadas; ciclo `0003 → 0004 → 0003 → 0004` validado com sucesso no banco de testes.
 - Porta 3000: não utilizada.
 
 ## Regras de autorização atuais
@@ -78,6 +82,9 @@
 | Autenticar | sim | sim |
 | Consultar mapa | sim | sim |
 | Criar/editar/excluir feições | sim | não |
+| Consultar e selecionar redes | sim | sim |
+| Criar/editar/agrupar redes | sim | não |
+| Buscar endereço | sim | sim |
 | Consultar equipamentos e portas ópticas | sim | sim |
 | Criar/editar equipamentos e portas ópticas | sim | não |
 | Criar usuários | sim | não |
@@ -114,6 +121,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - `docs/security/authentication-and-roles.md`
 - `docs/fiberq-fork.md`
 - `docs/optical-domain.md`
+- `docs/networks-and-address-search.md`
 
 ## Histórico resumido
 
@@ -130,7 +138,8 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - Importador KMZ v0.3.0 publicado no repositório do produto (`f31daf9`).
 - Tema escuro e inventário operacional iniciados para a versão 0.4.0.
 - Domínio relacional de equipamentos e portas implementado para a versão 0.5.0.
+- Redes por localidade, busca de endereço e edição de fibras implementadas para a versão 0.6.0.
 
 ## Próxima atualização prevista
 
-Criar a gestão visual de equipamentos e portas; depois modelar cabos, fibras e fusões.
+Criar a gestão visual de equipamentos e portas; depois evoluir cabos, fibras, fusões e cálculo automático de viabilidade.

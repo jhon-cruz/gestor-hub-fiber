@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app import __version__
 from app.api.dependencies import DbSession
-from app.api.routes import auth, imports, map_features, optical, users
+from app.api.routes import auth, geocoding, imports, map_features, networks, optical, users
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -35,6 +35,8 @@ app.include_router(map_features.router, prefix="/api/v1")
 app.include_router(imports.router, prefix="/api/v1")
 app.include_router(optical.router, prefix="/api/v1")
 app.include_router(optical.ports_router, prefix="/api/v1")
+app.include_router(networks.router, prefix="/api/v1")
+app.include_router(geocoding.router, prefix="/api/v1")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 

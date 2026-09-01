@@ -48,10 +48,18 @@ def test_admin_can_create_update_and_delete_map_feature(client, admin_headers, v
     updated = client.patch(
         f"/api/v1/map-features/{feature_id}",
         headers=admin_headers,
-        json={"name": "CTO TESTE 01 ATUALIZADA", "expected_revision": 1},
+        json={
+            "name": "CABO TESTE 01 ATUALIZADO",
+            "feature_type": "cable",
+            "properties": {"fiber_count": 24},
+            "expected_revision": 1,
+        },
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["properties"]["revision"] == 2
+    assert updated.json()["properties"]["feature_type"] == "cable"
+    assert updated.json()["properties"]["fiber_count"] == 24
+    assert updated.json()["properties"]["feature_type_override"] == "cable"
 
     stale = client.patch(
         f"/api/v1/map-features/{feature_id}",

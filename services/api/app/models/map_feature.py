@@ -28,6 +28,12 @@ class MapFeature(Base):
         nullable=True,
         index=True,
     )
+    network_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("service_network.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     source_namespace: Mapped[str | None] = mapped_column(String(120), nullable=True)
     source_ref: Mapped[str | None] = mapped_column(String(160), nullable=True)
     feature_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

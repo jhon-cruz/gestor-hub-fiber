@@ -5,6 +5,9 @@ x-api-environment: &api-environment
   APP_JWT_SECRET: ${APP_JWT_SECRET:?defina APP_JWT_SECRET no arquivo .env}
   APP_ACCESS_TOKEN_MINUTES: ${APP_ACCESS_TOKEN_MINUTES:-30}
   APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-["http://localhost:3030"]}
+  APP_GEOCODING_ENABLED: ${APP_GEOCODING_ENABLED:-true}
+  APP_GEOCODING_BASE_URL: ${APP_GEOCODING_BASE_URL:-https://nominatim.openstreetmap.org}
+  APP_GEOCODING_CACHE_DAYS: ${APP_GEOCODING_CACHE_DAYS:-30}
 
 x-api-base: &api-base
   build:

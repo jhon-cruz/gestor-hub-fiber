@@ -8,13 +8,15 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 
 - API FastAPI em Ubuntu 26.04;
 - interface web responsiva com mapa interativo;
-- temas claro e escuro com preferência persistente no navegador e ajuste independente do mapa;
+- temas claro e escuro para a interface, mantendo o mapa-base claro e legível;
+- redes nomeadas por localidade, com seleção e enquadramento geográfico automático;
+- busca de endereços no Brasil com cache, marcação no mapa e atribuição OpenStreetMap;
 - inventário pesquisável com filtros por tipo e status e acesso direto ao mapa;
 - PostgreSQL 18 + PostGIS 3.6;
 - autenticação por login e senha com token de curta duração;
 - papéis `admin` e `viewer`;
 - leitura de feições para ambos os papéis;
-- criação, edição e exclusão de feições somente por administradores;
+- criação, edição e exclusão de feições somente por administradores, incluindo tipo, rede e quantidade de fibras;
 - importação KMZ com pré-visualização, auditoria e reimportação sem duplicidade;
 - domínio relacional inicial para OLTs, DIOs, splitters, CTOs e suas portas;
 - auditoria das alterações de mapa;
@@ -50,7 +52,7 @@ Não existe cadastro público. Somente uma instalação vazia permite criar o pr
 
 Consulte [THIRD_PARTY.md](THIRD_PARTY.md) e a documentação em [docs/discovery](docs/discovery/).
 
-Guias adicionais: [desenvolvimento local](docs/development.md), [importação KMZ](docs/importing-kmz.md), [domínio óptico](docs/optical-domain.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
+Guias adicionais: [desenvolvimento local](docs/development.md), [redes e busca de endereço](docs/networks-and-address-search.md), [importação KMZ](docs/importing-kmz.md), [domínio óptico](docs/optical-domain.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
 
 ## Licença
 

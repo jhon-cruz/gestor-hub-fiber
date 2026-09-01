@@ -1,6 +1,7 @@
 """Administrator-only preview and idempotent KMZ import endpoints."""
 
 import json
+import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
@@ -9,6 +10,7 @@ from sqlalchemy import select, text
 from app.api.dependencies import AdminUser, DbSession
 from app.models.map_feature import MapFeature
 from app.models.map_import import MapImport
+from app.models.network import ServiceNetwork
 from app.services.audit import record_audit
 from app.services.kmz_import import MAX_UPLOAD_BYTES, KmzValidationError, ParsedKmz, parse_kmz
 
@@ -54,6 +56,7 @@ def _existing_refs(db: DbSession, namespace: str) -> set[str]:
 def _import_response(item: MapImport, *, already_imported: bool = False) -> dict[str, Any]:
     return {
         "id": str(item.id),
+        "network_id": str(item.network_id) if item.network_id else None,
         "filename": item.filename,
         "source_namespace": item.source_namespace,
         "file_sha256": item.file_sha256,
@@ -98,8 +101,11 @@ async def import_kmz(
     default_status: DefaultStatus,
     actor: AdminUser,
     db: DbSession,
+    network_id: Annotated[uuid.UUID | None, Form()] = None,
 ) -> dict[str, Any]:
     parsed = await _parse_upload(file, source_namespace, default_status)
+    if network_id is not None and db.get(ServiceNetwork, network_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="network not found")
     db.execute(
         text("SELECT pg_advisory_xact_lock(hashtextextended(:namespace, 0))"),
         {"namespace": f"map-import:{parsed.source_namespace}"},
@@ -121,6 +127,7 @@ async def import_kmz(
         if feature.source_ref is not None
     }
     batch = MapImport(
+        network_id=network_id,
         filename=parsed.filename,
         source_namespace=parsed.source_namespace,
         file_sha256=parsed.file_sha256,
@@ -148,6 +155,7 @@ async def import_kmz(
         if feature is None:
             feature = MapFeature(
                 import_id=batch.id,
+                network_id=network_id,
                 source_namespace=parsed.source_namespace,
                 source_ref=incoming.source_ref,
                 feature_type=incoming.feature_type,
@@ -162,7 +170,9 @@ async def import_kmz(
             batch.created_count += 1
         else:
             feature.import_id = batch.id
-            feature.feature_type = incoming.feature_type
+            if network_id is not None:
+                feature.network_id = network_id
+            feature.feature_type = properties.get("feature_type_override", incoming.feature_type)
             feature.name = incoming.name
             feature.status = incoming.status
             feature.geometry = geometry

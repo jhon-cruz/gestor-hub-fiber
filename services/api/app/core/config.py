@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     access_token_minutes: int = Field(default=30, ge=5, le=1440)
     cors_origins: list[str] = ["http://localhost:3030"]
     environment: str = "development"
+    geocoding_enabled: bool = True
+    geocoding_base_url: str = "https://nominatim.openstreetmap.org"
+    geocoding_cache_days: int = Field(default=30, ge=1, le=365)
 
     @field_validator("cors_origins")
     @classmethod
@@ -23,6 +26,13 @@ class Settings(BaseSettings):
         if "*" in value:
             raise ValueError("wildcard CORS is not allowed")
         return value
+
+    @field_validator("geocoding_base_url")
+    @classmethod
+    def validate_geocoding_url(cls, value: str) -> str:
+        if not value.startswith("https://"):
+            raise ValueError("geocoding base URL must use HTTPS")
+        return value.rstrip("/")
 
 
 @lru_cache

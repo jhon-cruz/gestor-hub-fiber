@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 
 from app.api.dependencies import AdminUser, CurrentUser, DbSession
 from app.models.map_feature import MapFeature
+from app.models.network import ServiceNetwork
 from app.schemas.map_feature import MapFeatureCreate, MapFeatureUpdate
 from app.services.audit import record_audit
 
@@ -19,6 +20,7 @@ def _properties(feature: MapFeature) -> dict[str, Any]:
     return {
         **feature.properties,
         "fiberq_uuid": str(feature.fiberq_uuid) if feature.fiberq_uuid else None,
+        "network_id": str(feature.network_id) if feature.network_id else None,
         "feature_type": feature.feature_type,
         "name": feature.name,
         "status": feature.status,
@@ -30,6 +32,7 @@ def _snapshot(feature: MapFeature) -> dict[str, Any]:
     return {
         "id": str(feature.id),
         "fiberq_uuid": str(feature.fiberq_uuid) if feature.fiberq_uuid else None,
+        "network_id": str(feature.network_id) if feature.network_id else None,
         "feature_type": feature.feature_type,
         "name": feature.name,
         "status": feature.status,
@@ -57,13 +60,14 @@ def list_map_features(
     db: DbSession,
     limit: int = Query(default=5000, ge=1, le=5000),
     offset: int = Query(default=0, ge=0),
+    network_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    rows = db.execute(
-        select(MapFeature, func.ST_AsGeoJSON(MapFeature.geometry))
-        .order_by(MapFeature.created_at)
-        .limit(limit)
-        .offset(offset)
+    query = select(MapFeature, func.ST_AsGeoJSON(MapFeature.geometry)).order_by(
+        MapFeature.created_at
     )
+    if network_id is not None:
+        query = query.where(MapFeature.network_id == network_id)
+    rows = db.execute(query.limit(limit).offset(offset))
     return {
         "type": "FeatureCollection",
         "features": [
@@ -76,8 +80,11 @@ def list_map_features(
 def create_map_feature(
     payload: MapFeatureCreate, actor: AdminUser, db: DbSession
 ) -> dict[str, Any]:
+    if payload.network_id is not None and db.get(ServiceNetwork, payload.network_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="network not found")
     feature = MapFeature(
         fiberq_uuid=payload.fiberq_uuid,
+        network_id=payload.network_id,
         feature_type=payload.feature_type,
         name=payload.name,
         status=payload.status,
@@ -119,9 +126,20 @@ def update_map_feature(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="stale feature revision")
 
     before = _snapshot(feature)
+    if (
+        "network_id" in payload.model_fields_set
+        and payload.network_id is not None
+        and db.get(ServiceNetwork, payload.network_id) is None
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="network not found")
     changes = payload.model_dump(exclude_unset=True, exclude={"expected_revision", "geometry"})
     for key, value in changes.items():
         setattr(feature, key, value)
+    if "feature_type" in payload.model_fields_set and payload.feature_type is not None:
+        feature.properties = {
+            **feature.properties,
+            "feature_type_override": payload.feature_type,
+        }
     if payload.geometry is not None:
         feature.geometry = func.ST_SetSRID(
             func.ST_GeomFromGeoJSON(json.dumps(payload.geometry)), 4326

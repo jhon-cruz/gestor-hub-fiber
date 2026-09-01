@@ -18,6 +18,12 @@ class MapImport(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    network_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("service_network.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     source_namespace: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     file_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

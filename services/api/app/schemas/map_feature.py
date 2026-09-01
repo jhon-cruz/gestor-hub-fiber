@@ -13,10 +13,23 @@ ALLOWED_STATUSES = {
     "damaged",
     "deactivated",
 }
+ALLOWED_FEATURE_TYPES = {
+    "cto",
+    "pole",
+    "splice_box",
+    "splitter",
+    "cable",
+    "route",
+    "olt",
+    "dio",
+    "area",
+    "other",
+}
 
 
 class MapFeatureCreate(BaseModel):
     fiberq_uuid: uuid.UUID | None = None
+    network_id: uuid.UUID | None = None
     feature_type: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=160)
     status: str = "planned"
@@ -30,6 +43,13 @@ class MapFeatureCreate(BaseModel):
             raise ValueError(f"unsupported status: {value}")
         return value
 
+    @field_validator("feature_type")
+    @classmethod
+    def validate_feature_type(cls, value: str) -> str:
+        if value not in ALLOWED_FEATURE_TYPES:
+            raise ValueError(f"unsupported feature type: {value}")
+        return value
+
     @field_validator("geometry")
     @classmethod
     def validate_geojson(cls, value: dict[str, Any]) -> dict[str, Any]:
@@ -40,6 +60,8 @@ class MapFeatureCreate(BaseModel):
 
 class MapFeatureUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
+    network_id: uuid.UUID | None = None
+    feature_type: str | None = None
     status: str | None = None
     geometry: dict[str, Any] | None = None
     properties: dict[str, Any] | None = None
@@ -50,6 +72,13 @@ class MapFeatureUpdate(BaseModel):
     def validate_status(cls, value: str | None) -> str | None:
         if value is not None and value not in ALLOWED_STATUSES:
             raise ValueError(f"unsupported status: {value}")
+        return value
+
+    @field_validator("feature_type")
+    @classmethod
+    def validate_feature_type(cls, value: str | None) -> str | None:
+        if value is not None and value not in ALLOWED_FEATURE_TYPES:
+            raise ValueError(f"unsupported feature type: {value}")
         return value
 
     @field_validator("geometry")

@@ -49,6 +49,9 @@ const state = {
   importFile: null,
   importPreview: null,
   view: "map",
+  networks: [],
+  selectedNetworkId: localStorage.getItem("gestorHubNetworkId") || "",
+  addressMarker: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -79,31 +82,17 @@ function toggleTheme() {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
 }
 
-function preferredMapTheme() {
-  return localStorage.getItem("gestorHubMapTheme") === "gray" ? "gray" : "light";
-}
-
-function applyMapTheme(theme, persist = false) {
-  const isGray = theme === "gray";
-  document.documentElement.dataset.mapTheme = isGray ? "gray" : "light";
-  const button = $("#map-theme-toggle");
-  if (button) {
-    button.setAttribute("aria-pressed", String(isGray));
-    button.setAttribute(
-      "aria-label", isGray ? "Usar mapa claro" : "Ativar mapa em tons de cinza",
-    );
-    button.querySelector("span").textContent = isGray ? "◑" : "◐";
-    button.lastChild.textContent = isGray ? " Mapa claro" : " Mapa em cinza";
-  }
-  if (persist) localStorage.setItem("gestorHubMapTheme", isGray ? "gray" : "light");
-}
-
-function toggleMapTheme() {
-  applyMapTheme(document.documentElement.dataset.mapTheme === "gray" ? "light" : "gray", true);
-}
-
 function setStatusOptions(select) {
   select.replaceChildren(...STATUS_OPTIONS.map(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    return option;
+  }));
+}
+
+function setTypeOptions(select) {
+  select.replaceChildren(...Object.entries(TYPE_LABELS).map(([value, label]) => {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
@@ -238,6 +227,7 @@ async function enterApplication() {
   initializeMap();
   window.setTimeout(() => state.map.invalidateSize(), 50);
   await loadFeatures(true);
+  await loadNetworks();
 }
 
 async function handleLogin(event) {
@@ -323,7 +313,14 @@ function pointLayer(feature, latlng) {
   });
 }
 
-function renderFeatures(features = state.features) {
+function selectedMapFeatures() {
+  if (!state.selectedNetworkId) return state.features;
+  return state.features.filter(
+    (feature) => String(feature.properties.network_id || "") === state.selectedNetworkId,
+  );
+}
+
+function renderFeatures(features = selectedMapFeatures()) {
   if (!state.featureGroup) return;
   state.featureGroup.clearLayers();
   state.layers.clear();
@@ -344,7 +341,7 @@ function renderFeatures(features = state.features) {
     state.map.fitBounds(state.featureGroup.getBounds(), {padding: [90, 90], maxZoom: 16});
     state.hasFitBounds = true;
   }
-  updateStats();
+  updateStats(features);
 }
 
 async function loadFeatures(forceFit = false) {
@@ -355,8 +352,9 @@ async function loadFeatures(forceFit = false) {
     state.features = collection.features;
     renderFeatures();
     renderInventory();
-    $("#map-summary").textContent = state.features.length
-      ? `${state.features.length} ativo${state.features.length === 1 ? "" : "s"} carregado${state.features.length === 1 ? "" : "s"}`
+    const selected = selectedMapFeatures();
+    $("#map-summary").textContent = selected.length
+      ? `${selected.length} ativo${selected.length === 1 ? "" : "s"} carregado${selected.length === 1 ? "" : "s"}`
       : "Nenhum ativo cadastrado — comece adicionando um ponto no mapa";
   } catch (error) {
     toast(error.message, "error");
@@ -365,13 +363,176 @@ async function loadFeatures(forceFit = false) {
   }
 }
 
-function updateStats() {
-  const count = (predicate) => state.features.filter(predicate).length;
-  $("#stat-total").textContent = state.features.length;
+function updateStats(features = selectedMapFeatures()) {
+  const count = (predicate) => features.filter(predicate).length;
+  $("#stat-total").textContent = features.length;
   $("#stat-ctos").textContent = count((f) => f.properties.feature_type === "cto");
   $("#stat-routes").textContent = count((f) => ["cable", "route"].includes(f.properties.feature_type));
   $("#stat-planned").textContent = count((f) => f.properties.status === "planned");
-  $("#stat-total-label").textContent = state.features.length === 1 ? "ativo geográfico" : "ativos geográficos";
+  $("#stat-total-label").textContent = features.length === 1 ? "ativo geográfico" : "ativos geográficos";
+}
+
+function networkLabel(network) {
+  const location = [network.city, network.state].filter(Boolean).join(" · ");
+  return `${network.name}${location ? ` — ${location}` : ""} (${network.feature_count})`;
+}
+
+function populateNetworkSelect(select, emptyLabel) {
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = emptyLabel;
+  select.replaceChildren(empty, ...state.networks.map((network) => {
+    const option = document.createElement("option");
+    option.value = network.id;
+    option.textContent = networkLabel(network);
+    return option;
+  }));
+}
+
+function populateNetworkSources() {
+  const select = $("#network-source");
+  const sources = [...new Set(state.features
+    .map((feature) => feature.properties.source_namespace)
+    .filter(Boolean))].sort();
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "Nenhuma origem — usar a área visível do mapa";
+  select.replaceChildren(empty, ...sources.map((source) => {
+    const option = document.createElement("option");
+    option.value = source;
+    const count = state.features.filter(
+      (feature) => feature.properties.source_namespace === source,
+    ).length;
+    option.textContent = `${source} (${count} elementos)`;
+    return option;
+  }));
+}
+
+async function loadNetworks() {
+  try {
+    state.networks = await request("/api/v1/networks");
+    if (!state.networks.some((network) => network.id === state.selectedNetworkId)) {
+      state.selectedNetworkId = "";
+      localStorage.removeItem("gestorHubNetworkId");
+    }
+    populateNetworkSelect($("#network-select"), "Todas as redes");
+    populateNetworkSelect($("#detail-network"), "Sem rede definida");
+    populateNetworkSources();
+    $("#network-select").value = state.selectedNetworkId;
+    selectNetwork(state.selectedNetworkId, true);
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function selectNetwork(networkId, moveMap = true) {
+  state.selectedNetworkId = networkId || "";
+  $("#network-select").value = state.selectedNetworkId;
+  if (state.selectedNetworkId) localStorage.setItem("gestorHubNetworkId", state.selectedNetworkId);
+  else localStorage.removeItem("gestorHubNetworkId");
+
+  state.hasFitBounds = true;
+  renderFeatures();
+  const network = state.networks.find((item) => item.id === state.selectedNetworkId);
+  const selected = selectedMapFeatures();
+  const prefix = network ? `${network.name} · ` : "";
+  $("#map-summary").textContent = `${prefix}${selected.length} ativo${selected.length === 1 ? "" : "s"}`;
+  if (moveMap && network?.viewport?.length === 4 && state.map) {
+    const [west, south, east, north] = network.viewport;
+    state.map.fitBounds([[south, west], [north, east]], {padding: [100, 100], maxZoom: 16});
+  } else if (moveMap && !network && selected.length && state.featureGroup.getBounds().isValid()) {
+    state.map.fitBounds(state.featureGroup.getBounds(), {padding: [100, 100], maxZoom: 16});
+  }
+}
+
+async function createNetwork(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const sourceNamespace = $("#network-source").value || null;
+  const bounds = state.map.getBounds();
+  $("#network-error").textContent = "";
+  setBusy(form, true);
+  try {
+    const network = await request("/api/v1/networks", {
+      method: "POST",
+      body: JSON.stringify({
+        name: $("#network-name").value.trim(),
+        city: $("#network-city").value.trim(),
+        state: $("#network-state").value.trim(),
+        source_namespace: sourceNamespace,
+        viewport: sourceNamespace ? null : [
+          bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth(),
+        ],
+      }),
+    });
+    form.reset();
+    $("#network-dialog").close();
+    await loadFeatures(false);
+    state.selectedNetworkId = network.id;
+    await loadNetworks();
+    selectNetwork(network.id, true);
+    toast(`Rede “${network.name}” criada com ${network.feature_count} elementos.`);
+  } catch (error) {
+    $("#network-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+function showAddressResult(result) {
+  const [west, south, east, north] = result.viewport;
+  state.map.fitBounds([[south, west], [north, east]], {padding: [120, 120], maxZoom: 18});
+  if (state.addressMarker) state.map.removeLayer(state.addressMarker);
+  state.addressMarker = L.circleMarker([result.latitude, result.longitude], {
+    radius: 9,
+    color: "#ffffff",
+    weight: 3,
+    fillColor: "#ff5b35",
+    fillOpacity: 1,
+  }).addTo(state.map).bindPopup(result.label).openPopup();
+  $("#address-results").classList.add("hidden");
+}
+
+function renderAddressResults(payload) {
+  const container = $("#address-results");
+  if (!payload.results.length) {
+    container.textContent = "Endereço não encontrado. Inclua rua, bairro, cidade e estado.";
+    container.classList.remove("hidden");
+    return;
+  }
+  const items = payload.results.map((result) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "address-result";
+    const label = document.createElement("strong");
+    label.textContent = result.label;
+    const meta = document.createElement("small");
+    meta.textContent = result.type || "Endereço";
+    button.append(label, meta);
+    button.addEventListener("click", () => showAddressResult(result));
+    return button;
+  });
+  const attribution = document.createElement("small");
+  attribution.className = "address-attribution";
+  attribution.textContent = payload.attribution;
+  container.replaceChildren(...items, attribution);
+  container.classList.remove("hidden");
+}
+
+async function searchAddress(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const query = $("#address-search-input").value.trim();
+  setBusy(form, true);
+  try {
+    const payload = await request(`/api/v1/geocoding/search?q=${encodeURIComponent(query)}`);
+    renderAddressResults(payload);
+  } catch (error) {
+    $("#address-results").textContent = error.message;
+    $("#address-results").classList.remove("hidden");
+  } finally {
+    setBusy(form, false);
+  }
 }
 
 function statusLabel(value) {
@@ -433,9 +594,10 @@ function renderInventory() {
     statusPill.textContent = statusLabel(properties.status);
     statusCell.append(statusPill);
     const capacityCell = document.createElement("td");
-    capacityCell.textContent = Number.isFinite(Number(properties.capacity))
-      && properties.capacity !== null && properties.capacity !== ""
-      ? Number(properties.capacity).toLocaleString("pt-BR")
+    const capacity = properties.fiber_count ?? properties.capacity;
+    capacityCell.textContent = Number.isFinite(Number(capacity))
+      && capacity !== null && capacity !== ""
+      ? Number(capacity).toLocaleString("pt-BR")
       : "—";
     const originCell = document.createElement("td");
     originCell.className = "inventory-origin";
@@ -460,9 +622,10 @@ function renderInventory() {
   $("#inventory-routes").textContent = state.features.filter((feature) =>
     ["cable", "route"].includes(feature.properties.feature_type)
   ).length.toLocaleString("pt-BR");
-  $("#inventory-capacity").textContent = state.features.filter((feature) =>
-    feature.properties.capacity !== null && feature.properties.capacity !== undefined
-  ).length.toLocaleString("pt-BR");
+  $("#inventory-capacity").textContent = state.features.filter((feature) => {
+    const capacity = feature.properties.fiber_count ?? feature.properties.capacity;
+    return capacity !== null && capacity !== undefined;
+  }).length.toLocaleString("pt-BR");
 }
 
 function showView(view) {
@@ -489,6 +652,10 @@ function showView(view) {
 
 function openFeatureOnMap(feature) {
   $("#feature-search").value = "";
+  state.selectedNetworkId = String(feature.properties.network_id || "");
+  if (state.selectedNetworkId) localStorage.setItem("gestorHubNetworkId", state.selectedNetworkId);
+  else localStorage.removeItem("gestorHubNetworkId");
+  $("#network-select").value = state.selectedNetworkId;
   renderFeatures();
   showView("map");
   selectFeature(feature);
@@ -504,13 +671,25 @@ function selectFeature(feature) {
   const props = feature.properties;
   $("#detail-title").textContent = props.name;
   $("#detail-name").value = props.name;
-  $("#detail-type").value = TYPE_LABELS[props.feature_type] || props.feature_type;
+  $("#detail-type").value = props.feature_type;
   $("#detail-status").value = props.status;
+  $("#detail-network").value = props.network_id || "";
+  $("#detail-fiber-count").value = props.fiber_count ?? props.capacity ?? "";
+  toggleFiberField();
   $("#detail-revision").textContent = props.revision;
   $("#detail-id").textContent = feature.id;
   $("#detail-name").readOnly = state.user.role !== "admin";
+  $("#detail-type").disabled = state.user.role !== "admin";
   $("#detail-status").disabled = state.user.role !== "admin";
+  $("#detail-network").disabled = state.user.role !== "admin";
+  $("#detail-fiber-count").readOnly = state.user.role !== "admin";
   $("#feature-panel").classList.remove("hidden");
+}
+
+function toggleFiberField() {
+  $("#detail-fiber-field").classList.toggle(
+    "hidden", !["cable", "route"].includes($("#detail-type").value),
+  );
 }
 
 async function updateSelectedFeature(event) {
@@ -519,16 +698,32 @@ async function updateSelectedFeature(event) {
   const form = event.currentTarget;
   setBusy(form, true);
   try {
+    const type = $("#detail-type").value;
+    const properties = {...state.selected.properties};
+    for (const key of ["name", "status", "feature_type", "revision", "fiberq_uuid", "network_id"]) {
+      delete properties[key];
+    }
+    if (["cable", "route"].includes(type)) {
+      properties.fiber_count = $("#detail-fiber-count").value
+        ? Number($("#detail-fiber-count").value)
+        : null;
+    } else {
+      delete properties.fiber_count;
+    }
     const updated = await request(`/api/v1/map-features/${state.selected.id}`, {
       method: "PATCH",
       body: JSON.stringify({
         name: $("#detail-name").value.trim(),
+        feature_type: type,
         status: $("#detail-status").value,
+        network_id: $("#detail-network").value || null,
+        properties,
         expected_revision: state.selected.properties.revision,
       }),
     });
     state.selected = updated;
     await loadFeatures();
+    await loadNetworks();
     selectFeature(updated);
     toast("Ativo atualizado.");
   } catch (error) {
@@ -566,9 +761,14 @@ function beginDrawing(event) {
       name: $("#feature-name").value.trim(),
       feature_type: $("#feature-type").value,
       status: $("#feature-status").value,
+      network_id: state.selectedNetworkId || null,
       properties: {
         notes: $("#feature-notes").value.trim() || null,
         capacity: $("#feature-capacity").value ? Number($("#feature-capacity").value) : null,
+        fiber_count: ["cable", "route"].includes($("#feature-type").value)
+          && $("#feature-capacity").value
+          ? Number($("#feature-capacity").value)
+          : null,
       },
     },
   };
@@ -726,6 +926,7 @@ function importFormData() {
   data.append("file", state.importFile);
   data.append("source_namespace", $("#kmz-namespace").value.trim());
   data.append("default_status", $("#kmz-default-status").value);
+  if (state.selectedNetworkId) data.append("network_id", state.selectedNetworkId);
   return data;
 }
 
@@ -811,6 +1012,7 @@ async function confirmKmzImport() {
       `${result.created_count.toLocaleString("pt-BR")} novos e ${result.updated_count.toLocaleString("pt-BR")} atualizados.`,
     );
     await Promise.all([loadFeatures(true), loadImportHistory()]);
+    await loadNetworks();
     if (state.importPreview.bounds && state.map) {
       const [west, south, east, north] = state.importPreview.bounds;
       state.map.fitBounds([[south, west], [north, east]], {padding: [80, 80]});
@@ -864,13 +1066,17 @@ function wireEvents() {
   $("#logout-button").addEventListener("click", () => logout());
   $("#refresh-button").addEventListener("click", () => loadFeatures(state.view === "map"));
   $("#theme-toggle").addEventListener("click", toggleTheme);
-  $("#map-theme-toggle").addEventListener("click", toggleMapTheme);
   $("#feature-search").addEventListener("input", () => renderFeatures());
+  $("#network-select").addEventListener("change", (event) => selectNetwork(event.target.value));
+  $("#add-network-button").addEventListener("click", () => $("#network-dialog").showModal());
+  $("#network-create-form").addEventListener("submit", createNetwork);
+  $("#address-search-form").addEventListener("submit", searchAddress);
   $("#add-feature-button").addEventListener("click", () => $("#feature-dialog").showModal());
   $("#feature-create-form").addEventListener("submit", beginDrawing);
   $("#finish-draw-button").addEventListener("click", finishDrawing);
   $("#cancel-draw-button").addEventListener("click", cancelDrawing);
   $("#feature-edit-form").addEventListener("submit", updateSelectedFeature);
+  $("#detail-type").addEventListener("change", toggleFiberField);
   $("#delete-feature-button").addEventListener("click", deleteSelectedFeature);
   $("#close-detail-button").addEventListener("click", () => $("#feature-panel").classList.add("hidden"));
   $("#users-nav").addEventListener("click", openUsers);
@@ -909,10 +1115,10 @@ function wireEvents() {
 
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme(preferredTheme());
-  applyMapTheme(preferredMapTheme());
   setStatusOptions($("#feature-status"));
   setStatusOptions($("#detail-status"));
   setStatusOptions($("#kmz-default-status"));
+  setTypeOptions($("#detail-type"));
   setInventoryFilters();
   wireEvents();
   showInitialScreen();

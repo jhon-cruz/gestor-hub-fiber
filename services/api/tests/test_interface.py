@@ -16,7 +16,11 @@ def test_interface_is_served_with_security_headers(client):
     assert 'id="imports-dialog"' in response.text
     assert 'id="kmz-file"' in response.text
     assert 'id="theme-toggle"' in response.text
-    assert 'id="map-theme-toggle"' in response.text
+    assert 'id="map-theme-toggle"' not in response.text
+    assert 'id="network-select"' in response.text
+    assert 'id="network-dialog"' in response.text
+    assert 'id="address-search-form"' in response.text
+    assert 'id="detail-fiber-count"' in response.text
     assert 'id="inventory-view"' in response.text
     assert 'id="inventory-table-body"' in response.text
     assert response.headers["x-frame-options"] == "DENY"

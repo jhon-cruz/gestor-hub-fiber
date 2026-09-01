@@ -31,6 +31,15 @@ As alterações próprias devem ficar fora do submódulo sempre que possível. A
 
 Os tiles públicos são adequados somente ao desenvolvimento e uso interativo moderado, sem download em massa. Antes de produção será definido um provedor com SLA ou uma infraestrutura própria.
 
+## Nominatim
+
+- Projeto: Nominatim / OpenStreetMap
+- Documentação: <https://nominatim.org/release-docs/latest/api/Search/>
+- Política pública: <https://operations.osmfoundation.org/policies/nominatim/>
+- Uso: geocodificação de buscas iniciadas explicitamente pelo usuário, limitada a resultados brasileiros.
+
+A aplicação não implementa autocomplete, limita as chamadas ao provedor público a no máximo uma por segundo, usa identificação própria, mantém cache local e exibe atribuição. Uma implantação com volume elevado deve configurar um serviço próprio ou provedor contratado.
+
 ## defusedxml
 
 - Projeto: defusedxml
