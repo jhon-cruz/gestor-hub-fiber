@@ -22,6 +22,7 @@ ALLOWED_FEATURE_TYPES = {
     "route",
     "olt",
     "dio",
+    "ont",
     "area",
     "other",
 }

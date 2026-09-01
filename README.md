@@ -19,6 +19,8 @@ O projeto está na fase de fundação. A primeira implementação inclui:
 - criação, edição e exclusão de feições somente por administradores, incluindo tipo, rede e quantidade de fibras;
 - importação KMZ com pré-visualização, auditoria e reimportação sem duplicidade;
 - domínio relacional e gestão visual para OLTs, DIOs, splitters, CTOs e suas portas;
+- cabos estruturados com tubos, fibras individuais, estados e fusões protegidas por integridade referencial;
+- ícones vetoriais distintos para CTO, caixa de emenda, splitter, OLT, DIO e ONT/ONU;
 - auditoria das alterações de mapa;
 - criação do primeiro administrador pela própria interface;
 - FiberQ 1.4.0 preservado como submódulo upstream enquanto o fork GitHub é concluído.
@@ -52,7 +54,7 @@ Não existe cadastro público. Somente uma instalação vazia permite criar o pr
 
 Consulte [THIRD_PARTY.md](THIRD_PARTY.md) e a documentação em [docs/discovery](docs/discovery/).
 
-Guias adicionais: [desenvolvimento local](docs/development.md), [redes e busca de endereço](docs/networks-and-address-search.md), [importação KMZ](docs/importing-kmz.md), [domínio óptico](docs/optical-domain.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
+Guias adicionais: [desenvolvimento local](docs/development.md), [redes e busca de endereço](docs/networks-and-address-search.md), [cabos e fibras](docs/fiber-topology.md), [importação KMZ](docs/importing-kmz.md), [domínio óptico](docs/optical-domain.md), [fork do FiberQ](docs/fiberq-fork.md) e [autenticação/RBAC](docs/security/authentication-and-roles.md).
 
 ## Licença
 

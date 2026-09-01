@@ -13,14 +13,14 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css">
+    <link rel="stylesheet" href="/static/app.css?v=0.8.0">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js"></script>
+    <script defer src="/static/app.js?v=0.8.0"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -115,6 +115,7 @@
           <button class="nav-item active" data-view="map"><span class="nav-icon">⌁</span><span>Mapa da rede</span></button>
           <button class="nav-item" data-view="inventory"><span class="nav-icon">▦</span><span>Inventário</span></button>
           <button class="nav-item" data-view="optical"><span class="nav-icon">◫</span><span>Equipamentos</span></button>
+          <button class="nav-item" data-view="fibers"><span class="nav-icon">⌇</span><span>Cabos e fibras</span></button>
           <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
           <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇧</span><span>Importar KMZ</span></button>
           <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
@@ -276,6 +277,37 @@
             </div>
           </section>
         </section>
+
+        <section id="fibers-view" class="inventory-stage app-view hidden" aria-labelledby="fibers-title">
+          <header class="inventory-heading">
+            <div>
+              <p class="overline">Topologia física</p>
+              <h1 id="fibers-title">Cabos, tubos e fibras</h1>
+              <p>Controle a estrutura interna dos cabos e prepare fusões com integridade de extremidades.</p>
+            </div>
+            <button id="add-cable-button" class="button primary admin-only" type="button">＋ Novo cabo estruturado</button>
+          </header>
+          <section class="inventory-stats" aria-label="Resumo de fibras">
+            <article><small>Cabos estruturados</small><strong id="cable-total">0</strong><span>cabos cadastrados</span></article>
+            <article><small>Fibras individuais</small><strong id="fiber-total">0</strong><span>capacidade modelada</span></article>
+            <article><small>Disponíveis</small><strong id="fiber-available">0</strong><span>livres para uso</span></article>
+            <article><small>Ocupadas</small><strong id="fiber-occupied">0</strong><span>em utilização</span></article>
+          </section>
+          <section class="inventory-card">
+            <div class="inventory-toolbar optical-toolbar">
+              <label class="inventory-search"><span aria-hidden="true">⌕</span><input id="cable-search" type="search" placeholder="Buscar cabo" aria-label="Buscar cabo"></label>
+              <label><span class="sr-only">Filtrar por classe</span><select id="cable-class-filter"><option value="">Todas as classes</option><option value="feeder">Feeder</option><option value="distribution">Distribuição</option><option value="branch">Derivação</option><option value="drop">Drop</option></select></label>
+              <strong id="cable-result-count" class="inventory-result-count">0 resultados</strong>
+            </div>
+            <div class="inventory-table-wrap">
+              <table class="inventory-table">
+                <thead><tr><th>Cabo</th><th>Classe</th><th>Estrutura</th><th>Fibras</th><th>Disponibilidade</th><th><span class="sr-only">Ação</span></th></tr></thead>
+                <tbody id="cable-table-body"></tbody>
+              </table>
+              <div id="cable-empty" class="inventory-empty hidden"><span>⌇</span><strong>Nenhum cabo estruturado</strong><small>Vincule um cabo desenhado ou importado para gerar tubos e fibras.</small></div>
+            </div>
+          </section>
+        </section>
       </section>
     </main>
 
@@ -284,7 +316,7 @@
         <header><div><p class="overline">Novo elemento</p><h2>Adicionar ativo ao mapa</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
         <div class="form-grid">
           <label class="span-2"><span>Nome do ativo</span><input id="feature-name" maxlength="160" placeholder="Ex.: CTO Jardim Norte 01" required></label>
-          <label><span>Tipo</span><select id="feature-type"><option value="cto">CTO</option><option value="pole">Poste</option><option value="splice_box">Caixa de emenda</option><option value="splitter">Splitter</option><option value="cable">Cabo óptico</option><option value="route">Rota planejada</option><option value="other">Outro</option></select></label>
+          <label><span>Tipo</span><select id="feature-type"><option value="cto">CTO</option><option value="pole">Poste</option><option value="splice_box">Caixa de emenda</option><option value="splitter">Splitter</option><option value="olt">OLT</option><option value="dio">DIO</option><option value="ont">ONT/ONU</option><option value="cable">Cabo óptico</option><option value="route">Rota planejada</option><option value="other">Outro</option></select></label>
           <label><span>Status</span><select id="feature-status"></select></label>
           <label><span>Geometria</span><select id="geometry-type"><option value="Point">Ponto</option><option value="LineString">Linha</option><option value="Polygon">Área</option></select></label>
           <label><span>Capacidade / fibras</span><input id="feature-capacity" type="number" min="0" step="1" placeholder="Ex.: 12, 24, 48"></label>
@@ -346,6 +378,57 @@
         <div class="section-title device-ports-heading"><div><h3>Portas</h3><small id="device-ports-summary">—</small></div></div>
         <div id="device-ports-list" class="device-ports-list"></div>
       </section>
+    </dialog>
+
+    <dialog id="cable-create-dialog" class="modal">
+      <form id="cable-create-form" method="dialog">
+        <header><div><p class="overline">Topologia física</p><h2>Novo cabo estruturado</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label class="span-2"><span>Nome</span><input id="new-cable-name" maxlength="160" placeholder="Ex.: Cabo distribuição 24FO" required></label>
+          <label><span>Classe</span><select id="new-cable-class"><option value="distribution">Distribuição</option><option value="feeder">Feeder</option><option value="branch">Derivação</option><option value="drop">Drop</option></select></label>
+          <label><span>Status</span><select id="new-cable-status"></select></label>
+          <label><span>Total de fibras</span><input id="new-cable-fibers" type="number" min="1" max="6912" value="24" required></label>
+          <label><span>Quantidade de tubos</span><input id="new-cable-tubes" type="number" min="1" max="576" value="2" required></label>
+          <label><span>Fibras por tubo</span><input id="new-cable-fibers-per-tube" type="number" min="1" max="48" value="12" required></label>
+          <label><span>Reserva técnica (m)</span><input id="new-cable-reserve" type="number" min="0" step="0.1" value="0"></label>
+          <label class="span-2"><span>Traçado correspondente no mapa</span><select id="new-cable-feature"><option value="">Sem vínculo geográfico</option></select></label>
+        </div>
+        <p class="dialog-note">Os tubos e todas as fibras serão criados de uma só vez. A estrutura não poderá ser reduzida depois que existirem conexões.</p>
+        <p id="cable-create-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Criar cabo e fibras</button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="cable-detail-dialog" class="modal wide-modal">
+      <section>
+        <header><div><p class="overline">Inventário do cabo</p><h2 id="cable-detail-title">—</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="cable-detail-summary">
+          <span><small>Classe</small><strong id="cable-detail-class">—</strong></span>
+          <span><small>Estrutura</small><strong id="cable-detail-structure">—</strong></span>
+          <span><small>Disponíveis</small><strong id="cable-detail-available">—</strong></span>
+          <button id="cable-map-button" class="button ghost" type="button">Ver no mapa</button>
+        </div>
+        <div class="section-title device-ports-heading"><div><h3>Fibras individuais</h3><small id="cable-fibers-summary">—</small></div></div>
+        <div id="cable-fibers-list" class="fiber-list"></div>
+      </section>
+    </dialog>
+
+    <dialog id="fusion-dialog" class="modal">
+      <form id="fusion-form" method="dialog">
+        <header><div><p class="overline">Continuidade óptica</p><h2>Criar fusão</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <div class="form-grid">
+          <label class="span-2"><span>Fibra de origem</span><input id="fusion-source-label" readonly></label>
+          <label><span>Extremidade da origem</span><select id="fusion-source-side"><option value="a">A</option><option value="b">B</option></select></label>
+          <label><span>Caixa da fusão</span><select id="fusion-enclosure" required></select></label>
+          <label><span>Cabo de destino</span><select id="fusion-target-cable" required></select></label>
+          <label><span>Fibra de destino</span><select id="fusion-target-fiber" required></select></label>
+          <label><span>Extremidade do destino</span><select id="fusion-target-side"><option value="a">A</option><option value="b">B</option></select></label>
+          <label><span>Perda estimada (dB)</span><input id="fusion-loss" type="number" min="0" max="10" step="0.01" value="0.1" required></label>
+          <label class="span-2"><span>Observações</span><textarea id="fusion-notes" rows="2" maxlength="500"></textarea></label>
+        </div>
+        <p id="fusion-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button class="button primary" type="submit">Registrar fusão</button></footer>
+      </form>
     </dialog>
 
     <dialog id="users-dialog" class="modal wide-modal">

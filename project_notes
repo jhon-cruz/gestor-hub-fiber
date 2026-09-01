@@ -1,6 +1,6 @@
 # Project Notes — Gestor Hub Fiber
 
-Última atualização: 2026-08-31
+Última atualização: 2026-09-01
 
 ## Status geral
 
@@ -12,7 +12,7 @@
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.7.0`
+- Versão atual: `0.8.0`
 
 ## Entregue nesta fase
 
@@ -63,6 +63,12 @@
 - [x] Tela de equipamentos com pesquisa, filtros e indicadores de portas disponíveis/ocupadas.
 - [x] Criação visual de OLT, DIO, splitter e CTO, com vínculo opcional a item compatível do mapa.
 - [x] Consulta e atualização administrativa dos estados das portas, preservando `viewer` como somente leitura.
+- [x] Cabos ópticos relacionais com classes feeder, distribuição, derivação e drop.
+- [x] Geração transacional de tubos e fibras individuais com UUID, posição e cores operacionais.
+- [x] Estados e revisão concorrente por fibra.
+- [x] Fusões com duas extremidades A/B e restrição única que impede conexões incompatíveis.
+- [x] Interface de cabos/fibras com criação, consulta, ocupação e registro de fusões.
+- [x] Símbolos SVG distintos para CTO, caixa de emenda, splitter, OLT, DIO e ONT/ONU no mapa.
 
 ## Validação executada
 
@@ -71,11 +77,11 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação: 14 testes aprovados.
+- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 16 testes aprovados.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.
-- Migrações até `0004` aplicadas; ciclo `0003 → 0004 → 0003 → 0004` validado com sucesso no banco de testes.
+- Migrações até `0005` aplicadas e reversão/reaplicação da topologia de fibras validada no banco de testes.
 - Porta 3000: não utilizada.
 
 ## Regras de autorização atuais
@@ -90,6 +96,8 @@
 | Buscar endereço | sim | sim |
 | Consultar equipamentos e portas ópticas | sim | sim |
 | Criar/editar equipamentos e portas ópticas | sim | não |
+| Consultar cabos, fibras e fusões | sim | sim |
+| Criar/editar cabos, fibras e fusões | sim | não |
 | Criar usuários | sim | não |
 
 Não existe usuário ou senha padrão versionado. O primeiro administrador pode ser criado na tela inicial ou interativamente com `make create-admin`.
@@ -101,7 +109,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - [x] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber` (commit inicial `bdecf27`).
 - [ ] Executar a matriz FiberQ nos containers QGIS 3/Qt5 e QGIS 4/Qt6 na CI.
 - [x] Criar a interface web multiusuário para acompanhamento no navegador.
-- [ ] Implementar o modelo óptico completo: fibras, fusões, splitters, CTOs e portas.
+- [ ] Completar o modelo óptico: conexão fibra-porta, rastreamento ponta a ponta e orçamento óptico.
 - [ ] Obter documentação/ambientes de homologação do SGP e IXC.
 - [ ] Implementar conectores SGP e IXC sem inventar endpoints não documentados.
 - [ ] Certificar instalação, backup, restauração, firewall e operação em uma VM/servidor Ubuntu Server 26.04 real.
@@ -125,8 +133,15 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 - `docs/fiberq-fork.md`
 - `docs/optical-domain.md`
 - `docs/networks-and-address-search.md`
+- `docs/fiber-topology.md`
 
 ## Histórico resumido
+
+### 2026-09-01
+
+- Cabos, tubos, fibras, fusões e novos símbolos cartográficos implementados para a versão 0.8.0.
+- Interface da topologia óptica e símbolos adaptativos por nível de zoom validados no navegador.
+- Migração `0005` validada nos dois sentidos e suíte ampliada para 16 testes.
 
 ### 2026-08-31
 
@@ -146,4 +161,4 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 
 ## Próxima atualização prevista
 
-Modelar cabos, fibras, fusões e conexões ponta a ponta; depois adicionar cálculo automático de viabilidade.
+Conectar fibras às portas de equipamentos e splitters, implementar rastreamento ponta a ponta e orçamento óptico.

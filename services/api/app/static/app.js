@@ -18,6 +18,17 @@ const PORT_STATUS_OPTIONS = [
 ];
 
 const DEVICE_LABELS = {olt: "OLT", dio: "DIO", splitter: "Splitter", cto: "CTO"};
+const CABLE_CLASS_LABELS = {
+  feeder: "Feeder",
+  distribution: "Distribuição",
+  branch: "Derivação",
+  drop: "Drop",
+};
+const FIBER_COLORS = {
+  green: "#20a96b", yellow: "#f0c419", white: "#ffffff", blue: "#2387e8",
+  red: "#e14c52", violet: "#7656c9", brown: "#8b5a3c", pink: "#ef8db6",
+  black: "#1c2630", gray: "#8b99a7", orange: "#ee8a28", aqua: "#17c6d8",
+};
 
 const TYPE_LABELS = {
   cto: "CTO",
@@ -28,6 +39,7 @@ const TYPE_LABELS = {
   route: "Rota planejada",
   olt: "OLT",
   dio: "DIO",
+  ont: "ONT/ONU",
   area: "Área",
   other: "Outro",
 };
@@ -42,6 +54,7 @@ const TYPE_COLORS = {
   other: "#607a92",
   olt: "#17ceec",
   dio: "#051a2c",
+  ont: "#008fff",
   area: "#4f86c6",
 };
 
@@ -65,6 +78,10 @@ const state = {
   opticalDevices: [],
   selectedDevice: null,
   devicePorts: [],
+  cables: [],
+  selectedCable: null,
+  cableFibers: [],
+  fusionSourceFiber: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -243,7 +260,7 @@ async function enterApplication() {
   initializeMap();
   window.setTimeout(() => state.map.invalidateSize(), 50);
   await loadFeatures(true);
-  await Promise.all([loadNetworks(), loadOpticalDevices()]);
+  await Promise.all([loadNetworks(), loadOpticalDevices(), loadCables()]);
 }
 
 async function handleLogin(event) {
@@ -308,6 +325,16 @@ function initializeMap() {
   }).addTo(state.map);
   state.featureGroup = L.featureGroup().addTo(state.map);
   state.map.on("click", handleMapClick);
+  state.map.on("zoomend", updateMapMarkerDensity);
+  updateMapMarkerDensity();
+}
+
+function updateMapMarkerDensity() {
+  if (!state.map) return;
+  const container = state.map.getContainer();
+  const zoom = state.map.getZoom();
+  container.classList.toggle("marker-density-wide", zoom <= 13);
+  container.classList.toggle("marker-density-medium", zoom > 13 && zoom <= 15);
 }
 
 function layerStyle(feature) {
@@ -317,11 +344,33 @@ function layerStyle(feature) {
 }
 
 function pointLayer(feature, latlng) {
+  const markerSymbols = {
+    cto: '<rect x="8" y="9" width="20" height="18" rx="3"/><path d="M12 14h12M12 19h12M14 27v3M22 27v3"/>',
+    splice_box: '<rect x="7" y="8" width="22" height="20" rx="7"/><path d="M11 13c5 0 5 10 10 10h4M11 23c5 0 5-10 10-10h4"/>',
+    splitter: '<path d="M10 9h6v7m0 0v11m0-11h6v-4h5m-11 9h6v5h5"/><circle cx="10" cy="9" r="2"/><circle cx="29" cy="12" r="2"/><circle cx="29" cy="26" r="2"/>',
+    olt: '<rect x="7" y="7" width="22" height="22" rx="3"/><path d="M11 12h14M11 17h14M11 22h8"/><circle cx="23" cy="22" r="1.5"/>',
+    dio: '<rect x="6" y="10" width="24" height="17" rx="3"/><circle cx="12" cy="18.5" r="2"/><circle cx="18" cy="18.5" r="2"/><circle cx="24" cy="18.5" r="2"/>',
+    ont: '<rect x="8" y="14" width="20" height="14" rx="3"/><path d="M13 14V9m10 5V9M13 10c3-3 7-3 10 0M12 23h12"/><circle cx="18" cy="19" r="1.5"/>',
+  };
+  const type = feature.properties.feature_type;
+  if (markerSymbols[type]) {
+    return L.marker(latlng, {
+      icon: L.divIcon({
+        className: `network-marker marker-${type}`,
+        html: `<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="marker-back" cx="18" cy="18" r="17"/><g class="marker-symbol">${markerSymbols[type]}</g></svg>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -19],
+      }),
+      keyboard: true,
+      title: feature.properties.name,
+    });
+  }
   const color = feature.properties.kml_style?.icon_color
-    || TYPE_COLORS[feature.properties.feature_type]
+    || TYPE_COLORS[type]
     || TYPE_COLORS.other;
   return L.circleMarker(latlng, {
-    radius: feature.properties.feature_type === "cto" ? 9 : 7,
+    radius: 7,
     color: "#ffffff",
     weight: 2,
     fillColor: color,
@@ -633,7 +682,7 @@ function renderInventory() {
   $("#inventory-result-count").textContent = `${filtered.length.toLocaleString("pt-BR")} resultado${filtered.length === 1 ? "" : "s"}`;
   $("#inventory-total").textContent = state.features.length.toLocaleString("pt-BR");
   $("#inventory-optical").textContent = state.features.filter((feature) =>
-    ["cto", "splice_box", "splitter", "olt", "dio"].includes(feature.properties.feature_type)
+    ["cto", "splice_box", "splitter", "olt", "dio", "ont"].includes(feature.properties.feature_type)
   ).length.toLocaleString("pt-BR");
   $("#inventory-routes").textContent = state.features.filter((feature) =>
     ["cable", "route"].includes(feature.properties.feature_type)
@@ -895,12 +944,304 @@ function openSelectedDeviceOnMap() {
   openFeatureOnMap(feature);
 }
 
+function renderCables() {
+  const body = $("#cable-table-body");
+  if (!body) return;
+  const query = $("#cable-search").value.trim().toLowerCase();
+  const cableClass = $("#cable-class-filter").value;
+  const filtered = state.cables.filter((cable) =>
+    (!query || cable.name.toLowerCase().includes(query))
+      && (!cableClass || cable.cable_class === cableClass)
+  );
+  body.replaceChildren(...filtered.map((cable) => {
+    const row = document.createElement("tr");
+    const identityCell = document.createElement("td");
+    const identity = document.createElement("div");
+    identity.className = "inventory-identity";
+    const dot = document.createElement("span");
+    dot.className = "inventory-type-dot";
+    dot.style.background = TYPE_COLORS.cable;
+    const text = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = cable.name;
+    const meta = document.createElement("small");
+    meta.textContent = cable.map_feature_id ? "Vinculado ao mapa" : "Sem vínculo geográfico";
+    text.append(name, meta);
+    identity.append(dot, text);
+    identityCell.append(identity);
+    const classCell = document.createElement("td");
+    classCell.textContent = CABLE_CLASS_LABELS[cable.cable_class] || cable.cable_class;
+    const structureCell = document.createElement("td");
+    structureCell.textContent = `${cable.tube_count} tubos × ${cable.fibers_per_tube} fibras`;
+    const fibersCell = document.createElement("td");
+    fibersCell.textContent = `${cable.fiber_count} FO`;
+    const availabilityCell = document.createElement("td");
+    availabilityCell.textContent = `${cable.fiber_summary.available} livres · ${cable.fiber_summary.occupied} ocupadas`;
+    const actionCell = document.createElement("td");
+    const action = document.createElement("button");
+    action.className = "button ghost inventory-open";
+    action.type = "button";
+    action.textContent = "Ver fibras";
+    action.addEventListener("click", () => openCable(cable));
+    actionCell.append(action);
+    row.append(identityCell, classCell, structureCell, fibersCell, availabilityCell, actionCell);
+    return row;
+  }));
+  const totals = state.cables.reduce((summary, cable) => ({
+    fibers: summary.fibers + cable.fiber_summary.total,
+    available: summary.available + cable.fiber_summary.available,
+    occupied: summary.occupied + cable.fiber_summary.occupied,
+  }), {fibers: 0, available: 0, occupied: 0});
+  $("#cable-total").textContent = state.cables.length.toLocaleString("pt-BR");
+  $("#fiber-total").textContent = totals.fibers.toLocaleString("pt-BR");
+  $("#fiber-available").textContent = totals.available.toLocaleString("pt-BR");
+  $("#fiber-occupied").textContent = totals.occupied.toLocaleString("pt-BR");
+  $("#cable-result-count").textContent = `${filtered.length} resultado${filtered.length === 1 ? "" : "s"}`;
+  $("#cable-empty").classList.toggle("hidden", filtered.length > 0);
+}
+
+async function loadCables() {
+  try {
+    state.cables = await request("/api/v1/optical-cables?limit=2000");
+    renderCables();
+    populateCableFeatureOptions();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function populateCableFeatureOptions() {
+  const select = $("#new-cable-feature");
+  if (!select) return;
+  const eligible = state.features.filter((feature) =>
+    ["cable", "route"].includes(feature.properties.feature_type)
+      && !feature.properties.optical_cable_id
+  );
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "Sem vínculo geográfico";
+  select.replaceChildren(empty, ...eligible.map((feature) => {
+    const option = document.createElement("option");
+    option.value = feature.id;
+    option.textContent = `${feature.properties.name} · ${feature.properties.fiber_count ?? feature.properties.capacity ?? "?"} FO`;
+    return option;
+  }));
+}
+
+async function createCable(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#cable-create-error").textContent = "";
+  setBusy(form, true);
+  try {
+    const cable = await request("/api/v1/optical-cables", {
+      method: "POST",
+      body: JSON.stringify({
+        network_id: state.selectedNetworkId || null,
+        map_feature_id: $("#new-cable-feature").value || null,
+        name: $("#new-cable-name").value.trim(),
+        cable_class: $("#new-cable-class").value,
+        status: $("#new-cable-status").value,
+        fiber_count: Number($("#new-cable-fibers").value),
+        tube_count: Number($("#new-cable-tubes").value),
+        fibers_per_tube: Number($("#new-cable-fibers-per-tube").value),
+        technical_reserve_m: Number($("#new-cable-reserve").value || 0),
+        properties: {},
+      }),
+    });
+    form.reset();
+    setStatusOptions($("#new-cable-status"));
+    $("#new-cable-fibers").value = "24";
+    $("#new-cable-tubes").value = "2";
+    $("#new-cable-fibers-per-tube").value = "12";
+    $("#cable-create-dialog").close();
+    await Promise.all([loadFeatures(false), loadCables()]);
+    await openCable(cable);
+    toast(`${cable.fiber_count} fibras criadas em ${cable.tube_count} tubos.`);
+  } catch (error) {
+    $("#cable-create-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+function fiberLabel(fiber) {
+  return `FO ${fiber.global_position} · tubo ${fiber.tube_position}/${fiber.tube_color} · ${fiber.color_code}`;
+}
+
+function renderCableFibers() {
+  const list = $("#cable-fibers-list");
+  list.replaceChildren(...state.cableFibers.map((fiber) => {
+    const row = document.createElement("article");
+    row.className = "fiber-row";
+    const identity = document.createElement("div");
+    identity.className = "fiber-identity";
+    const color = document.createElement("span");
+    color.className = "fiber-color";
+    color.style.setProperty("--fiber-color", FIBER_COLORS[fiber.color_code.split("-")[0]] || "#7f91a6");
+    const text = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = `Fibra ${fiber.global_position}`;
+    const meta = document.createElement("small");
+    const connected = fiber.connected_ends?.length ? ` · conectada ${fiber.connected_ends.join("/").toUpperCase()}` : "";
+    meta.textContent = `Tubo ${fiber.tube_position} · ${fiber.color_code}${connected}`;
+    text.append(name, meta);
+    identity.append(color, text);
+    const select = document.createElement("select");
+    for (const [value, label] of PORT_STATUS_OPTIONS) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.append(option);
+    }
+    select.value = fiber.status;
+    select.disabled = state.user.role !== "admin";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "button ghost small admin-only";
+    save.textContent = "Salvar";
+    save.addEventListener("click", () => updateFiber(fiber, select.value, save));
+    const fuse = document.createElement("button");
+    fuse.type = "button";
+    fuse.className = "button ghost small admin-only";
+    fuse.textContent = "Fusão";
+    fuse.addEventListener("click", () => openFusion(fiber));
+    row.append(identity, select, save, fuse);
+    return row;
+  }));
+}
+
+async function openCable(cable) {
+  state.selectedCable = cable;
+  $("#cable-detail-title").textContent = cable.name;
+  $("#cable-detail-class").textContent = CABLE_CLASS_LABELS[cable.cable_class];
+  $("#cable-detail-structure").textContent = `${cable.tube_count} × ${cable.fibers_per_tube}`;
+  $("#cable-detail-available").textContent = `${cable.fiber_summary.available}/${cable.fiber_summary.total}`;
+  $("#cable-map-button").classList.toggle("hidden", !cable.map_feature_id);
+  $("#cable-fibers-summary").textContent = "Carregando fibras...";
+  $("#cable-fibers-list").innerHTML = '<span class="field-hint">Carregando...</span>';
+  $("#cable-detail-dialog").showModal();
+  try {
+    state.cableFibers = await request(`/api/v1/optical-cables/${cable.id}/fibers`);
+    $("#cable-fibers-summary").textContent = `${state.cableFibers.length} fibras em ${cable.tube_count} tubos`;
+    renderCableFibers();
+  } catch (error) {
+    $("#cable-fibers-list").textContent = error.message;
+  }
+}
+
+async function updateFiber(fiber, status, button) {
+  button.disabled = true;
+  try {
+    const updated = await request(`/api/v1/optical-fibers/${fiber.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({status, expected_revision: fiber.revision}),
+    });
+    state.cableFibers = state.cableFibers.map((item) => item.id === updated.id
+      ? {...item, ...updated}
+      : item);
+    await loadCables();
+    const fresh = state.cables.find((item) => item.id === state.selectedCable.id);
+    if (fresh) state.selectedCable = fresh;
+    renderCableFibers();
+    toast(`Fibra marcada como ${portStatusLabel(status).toLowerCase()}.`);
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function openFusion(fiber) {
+  state.fusionSourceFiber = fiber;
+  $("#fusion-source-label").value = `${state.selectedCable.name} · ${fiberLabel(fiber)}`;
+  const enclosures = state.features.filter((feature) =>
+    ["splice_box", "cto", "dio", "splitter"].includes(feature.properties.feature_type)
+  );
+  $("#fusion-enclosure").replaceChildren(...enclosures.map((feature) => {
+    const option = document.createElement("option");
+    option.value = feature.id;
+    option.textContent = feature.properties.name;
+    return option;
+  }));
+  $("#fusion-target-cable").replaceChildren(...state.cables.map((cable) => {
+    const option = document.createElement("option");
+    option.value = cable.id;
+    option.textContent = cable.name;
+    return option;
+  }));
+  $("#fusion-target-cable").value = state.cables.find((item) => item.id !== state.selectedCable.id)?.id
+    || state.selectedCable.id;
+  $("#fusion-error").textContent = "";
+  await loadFusionTargetFibers();
+  $("#fusion-dialog").showModal();
+}
+
+async function loadFusionTargetFibers() {
+  const cableId = $("#fusion-target-cable").value;
+  if (!cableId) return;
+  try {
+    const fibers = await request(`/api/v1/optical-cables/${cableId}/fibers`);
+    $("#fusion-target-fiber").replaceChildren(...fibers
+      .filter((fiber) => fiber.id !== state.fusionSourceFiber?.id)
+      .map((fiber) => {
+        const option = document.createElement("option");
+        option.value = fiber.id;
+        option.textContent = fiberLabel(fiber);
+        return option;
+      }));
+  } catch (error) {
+    $("#fusion-error").textContent = error.message;
+  }
+}
+
+async function createFusion(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  $("#fusion-error").textContent = "";
+  setBusy(form, true);
+  try {
+    await request("/api/v1/fiber-connections", {
+      method: "POST",
+      body: JSON.stringify({
+        enclosure_feature_id: $("#fusion-enclosure").value,
+        connection_type: "fusion",
+        loss_db: Number($("#fusion-loss").value),
+        notes: $("#fusion-notes").value.trim() || null,
+        endpoints: [
+          {fiber_id: state.fusionSourceFiber.id, end_side: $("#fusion-source-side").value},
+          {fiber_id: $("#fusion-target-fiber").value, end_side: $("#fusion-target-side").value},
+        ],
+      }),
+    });
+    form.reset();
+    $("#fusion-loss").value = "0.1";
+    $("#fusion-dialog").close();
+    state.cableFibers = await request(`/api/v1/optical-cables/${state.selectedCable.id}/fibers`);
+    renderCableFibers();
+    toast("Fusão registrada com integridade de extremidades.");
+  } catch (error) {
+    $("#fusion-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
+  }
+}
+
+function openSelectedCableOnMap() {
+  if (!state.selectedCable?.map_feature_id) return;
+  const feature = state.features.find((item) => item.id === state.selectedCable.map_feature_id);
+  if (!feature) return toast("O traçado vinculado não está disponível.", "error");
+  $("#cable-detail-dialog").close();
+  openFeatureOnMap(feature);
+}
+
 function showView(view) {
-  if (!["map", "inventory", "optical"].includes(view)) return;
+  if (!["map", "inventory", "optical", "fibers"].includes(view)) return;
   state.view = view;
   $("#map-view").classList.toggle("hidden", view !== "map");
   $("#inventory-view").classList.toggle("hidden", view !== "inventory");
   $("#optical-view").classList.toggle("hidden", view !== "optical");
+  $("#fibers-view").classList.toggle("hidden", view !== "fibers");
   $$(".nav-item[data-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
@@ -908,6 +1249,7 @@ function showView(view) {
     map: ["Mapa da rede", "Visão geográfica"],
     inventory: ["Inventário", "Ativos da rede"],
     optical: ["Equipamentos", "Domínio óptico"],
+    fibers: ["Cabos e fibras", "Topologia física"],
   };
   $("#topbar-section").textContent = labels[view][0];
   $("#topbar-title").textContent = labels[view][1];
@@ -920,8 +1262,10 @@ function showView(view) {
     window.setTimeout(() => state.map?.invalidateSize(), 30);
   } else if (view === "inventory") {
     renderInventory();
-  } else {
+  } else if (view === "optical") {
     renderOpticalDevices();
+  } else {
+    renderCables();
   }
 }
 
@@ -1341,6 +1685,7 @@ function wireEvents() {
   $("#logout-button").addEventListener("click", () => logout());
   $("#refresh-button").addEventListener("click", () => {
     if (state.view === "optical") loadOpticalDevices();
+    else if (state.view === "fibers") loadCables();
     else loadFeatures(state.view === "map");
   });
   $("#theme-toggle").addEventListener("click", toggleTheme);
@@ -1386,6 +1731,26 @@ function wireEvents() {
   $("#device-create-form").addEventListener("submit", createOpticalDevice);
   $("#device-edit-form").addEventListener("submit", updateOpticalDevice);
   $("#device-map-button").addEventListener("click", openSelectedDeviceOnMap);
+  $("#cable-search").addEventListener("input", renderCables);
+  $("#cable-class-filter").addEventListener("change", renderCables);
+  $("#add-cable-button").addEventListener("click", () => {
+    populateCableFeatureOptions();
+    $("#cable-create-dialog").showModal();
+  });
+  $("#new-cable-feature").addEventListener("change", (event) => {
+    const feature = state.features.find((item) => item.id === event.target.value);
+    if (!feature) return;
+    $("#new-cable-name").value = feature.properties.name;
+    const capacity = Number(feature.properties.fiber_count ?? feature.properties.capacity);
+    if (Number.isInteger(capacity) && capacity > 0) {
+      $("#new-cable-fibers").value = capacity;
+      $("#new-cable-tubes").value = Math.ceil(capacity / 12);
+    }
+  });
+  $("#cable-create-form").addEventListener("submit", createCable);
+  $("#cable-map-button").addEventListener("click", openSelectedCableOnMap);
+  $("#fusion-target-cable").addEventListener("change", loadFusionTargetFibers);
+  $("#fusion-form").addEventListener("submit", createFusion);
   $("#menu-button").addEventListener("click", () => $("#app-shell").classList.toggle("menu-open"));
   $$(".modal-close").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
   $$(".password-toggle").forEach((button) => button.addEventListener("click", () => {
@@ -1394,7 +1759,7 @@ function wireEvents() {
     button.setAttribute("aria-label", input.type === "password" ? "Mostrar senha" : "Ocultar senha");
   }));
   $$(".nav-item[data-view]").forEach((button) => button.addEventListener("click", () => {
-    if (["map", "inventory", "optical"].includes(button.dataset.view)) showView(button.dataset.view);
+    if (["map", "inventory", "optical", "fibers"].includes(button.dataset.view)) showView(button.dataset.view);
     else {
       toast("Este módulo será liberado em uma próxima etapa.");
       $("#app-shell").classList.remove("menu-open");
@@ -1416,6 +1781,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatusOptions($("#kmz-default-status"));
   setStatusOptions($("#new-device-status"));
   setStatusOptions($("#device-detail-status"));
+  setStatusOptions($("#new-cable-status"));
   setTypeOptions($("#detail-type"));
   setInventoryFilters();
   wireEvents();

@@ -7,6 +7,13 @@ from sqlalchemy import delete
 from app.core.database import SessionLocal
 from app.main import app
 from app.models.audit import AuditLog
+from app.models.fiber_topology import (
+    CableTube,
+    FiberConnection,
+    FiberConnectionEndpoint,
+    OpticalCable,
+    OpticalFiber,
+)
 from app.models.geocode import GeocodeCache
 from app.models.map_feature import MapFeature
 from app.models.map_import import MapImport
@@ -21,6 +28,11 @@ def clean_database():
     with SessionLocal.begin() as db:
         db.execute(delete(AuditLog))
         db.execute(delete(GeocodeCache))
+        db.execute(delete(FiberConnectionEndpoint))
+        db.execute(delete(FiberConnection))
+        db.execute(delete(OpticalFiber))
+        db.execute(delete(CableTube))
+        db.execute(delete(OpticalCable))
         db.execute(delete(OpticalPort))
         db.execute(delete(OpticalDevice))
         db.execute(delete(MapFeature))

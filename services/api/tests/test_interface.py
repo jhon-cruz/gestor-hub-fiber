@@ -27,6 +27,10 @@ def test_interface_is_served_with_security_headers(client):
     assert 'id="device-create-dialog"' in response.text
     assert 'id="device-detail-dialog"' in response.text
     assert 'id="device-ports-list"' in response.text
+    assert 'id="fibers-view"' in response.text
+    assert 'id="cable-create-dialog"' in response.text
+    assert 'id="cable-fibers-list"' in response.text
+    assert 'id="fusion-dialog"' in response.text
     assert response.headers["x-frame-options"] == "DENY"
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 

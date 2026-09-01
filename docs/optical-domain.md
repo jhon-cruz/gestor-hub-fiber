@@ -48,8 +48,9 @@ também podem:
 - alterar cada porta entre disponível, reservada, ocupada, danificada ou desativada;
 - navegar do equipamento para seu item geográfico.
 
-## Limites desta entrega
+## Evolução e limites
 
-Ainda não há conexões entre portas, fibras individuais, fusões ou rastreamento ponta a ponta.
-Essas entidades serão adicionadas em migrations posteriores, sem armazenar conectividade dentro
-do JSON genérico da feição geográfica.
+Fibras individuais e fusões passaram a ser entidades relacionais na migration `0005`, conforme
+[cabos e fibras](fiber-topology.md). Ainda faltam as conexões entre fibras e portas de equipamentos,
+além do rastreamento e orçamento óptico ponta a ponta. A conectividade continuará fora do JSON
+genérico da feição geográfica.

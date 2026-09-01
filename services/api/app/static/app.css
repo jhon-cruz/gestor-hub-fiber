@@ -263,6 +263,19 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .leaflet-control-attribution { font-size: 9px !important; }
 .leaflet-control-zoom { margin-left: 22px !important; margin-bottom: 22px !important; border: 0 !important; box-shadow: var(--shadow-soft) !important; }
 .leaflet-control-zoom a { color: var(--forest) !important; border-color: var(--line) !important; }
+.network-marker { border: 0; background: transparent; filter: drop-shadow(0 3px 5px rgb(5 26 44 / 28%)); }
+.network-marker svg { display: block; overflow: visible; }
+#map.marker-density-wide .network-marker svg { transform: scale(.64); }
+#map.marker-density-medium .network-marker svg { transform: scale(.8); }
+.network-marker svg { transform-origin: center; transition: transform .15s ease-out; }
+.network-marker .marker-back { fill: var(--marker-color, var(--mint)); stroke: white; stroke-width: 2; }
+.network-marker .marker-symbol { fill: none; stroke: white; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.network-marker.marker-cto { --marker-color: #008fff; }
+.network-marker.marker-splice_box { --marker-color: #17bcd8; }
+.network-marker.marker-splitter { --marker-color: #655ed6; }
+.network-marker.marker-olt { --marker-color: #051a2c; }
+.network-marker.marker-dio { --marker-color: #42657f; }
+.network-marker.marker-ont { --marker-color: #11a978; }
 
 .map-overlay { position: absolute; z-index: 500; pointer-events: none; }
 .map-heading { top: 25px; left: 28px; width: 310px; padding: 19px 21px; border: 1px solid rgb(255 255 255 / 75%); border-radius: 12px; background: rgb(255 255 255 / 89%); box-shadow: var(--shadow-soft); backdrop-filter: blur(13px); }
@@ -435,6 +448,20 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .port-state.reserved::before { background: #e5a925; }
 .port-state.damaged::before { background: var(--danger); }
 
+.cable-detail-summary { display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: end; gap: 10px; margin-top: 22px; }
+.cable-detail-summary > span { display: grid; gap: 4px; border-radius: 9px; padding: 11px; background: var(--paper); }
+.cable-detail-summary small { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .07em; }
+.cable-detail-summary strong { font-size: 12px; }
+.fiber-list { max-height: 390px; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding-right: 3px; }
+.fiber-row { display: grid; grid-template-columns: minmax(120px, 1fr) 120px auto auto; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; padding: 7px 8px; background: var(--paper); }
+.fiber-identity { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.fiber-color { width: 12px; height: 12px; flex: 0 0 auto; border: 1px solid rgb(5 26 44 / 25%); border-radius: 50%; background: var(--fiber-color, #7f91a6); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 45%); }
+.fiber-identity strong, .fiber-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fiber-identity strong { font-size: 10px; }
+.fiber-identity small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.fiber-row select { min-height: 32px; padding: 6px 8px; font-size: 9px; }
+.fiber-row .button { min-height: 31px; padding: 0 8px; font-size: 9px; }
+
 :root[data-theme="dark"] .auth-panel { background: #081a29; }
 :root[data-theme="dark"] label > span:first-child { color: #b3c5d4; }
 :root[data-theme="dark"] input[readonly] { background: #10293d; }
@@ -538,6 +565,10 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .device-ports-list { grid-template-columns: 1fr; }
   .device-port-row { grid-template-columns: 1fr 120px; }
   .device-port-row .button { grid-column: 1 / -1; }
+  .cable-detail-summary { grid-template-columns: 1fr 1fr; }
+  .fiber-list { grid-template-columns: 1fr; }
+  .fiber-row { grid-template-columns: 1fr 110px; }
+  .fiber-row .button { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
