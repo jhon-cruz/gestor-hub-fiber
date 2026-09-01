@@ -79,6 +79,7 @@
 - [x] Camada cartográfica configurável entre Google Maps e OpenStreetMap, preservando GeoJSON, redes, ícones, seleção e desenho.
 - [x] Adaptador Google Geocoding com viés pela rede, normalização de precisão e cache limitado a 30 dias.
 - [x] Chaves Google separadas entre navegador e servidor, configuração por ambiente e CSP atualizada.
+- [x] Google Maps e Google Geocoding ativados no ambiente local com credenciais externas restritas por serviço.
 
 ## Validação executada
 
@@ -88,7 +89,10 @@
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
 - Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 19 testes aprovados na versão 0.10.0.
-- Interface local recarregada em navegador real, sem erros ou avisos no console; carregamento efetivo do Google aguarda as chaves restritas do projeto Google Cloud.
+- Interface local recarregada em navegador real, sem erros ou avisos no console; credenciais Google configuradas fora do repositório.
+- Maps JavaScript API validada com referenciador `localhost:3030`, resposta HTTP 200 e ausência de erros de chave, faturamento ou ativação.
+- Google Geocoding validado em consulta real, retornando resultado normalizado pelo provedor `google`.
+- Chave do navegador limitada à Maps JavaScript API e referenciadores locais; chave do backend limitada à Geocoding API, sem IP por causa do CGNAT dinâmico.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.
