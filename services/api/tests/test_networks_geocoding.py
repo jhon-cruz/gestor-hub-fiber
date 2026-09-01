@@ -119,10 +119,14 @@ def test_network_groups_existing_source_and_filters_map(client, admin_headers, v
     assert niteroi.json()["feature_count"] == 0
 
 
-def test_address_search_is_authenticated_cached_and_network_biased(
+def test_google_address_search_keeps_explicit_city_and_uses_network_as_bounds_bias(
     client, admin_headers, viewer_headers, monkeypatch
 ):
     calls = 0
+
+    class RuntimeSettings:
+        geocoding_provider = "google"
+        geocoding_cache_days = 30
 
     network = client.post(
         "/api/v1/networks",
@@ -138,29 +142,33 @@ def test_address_search_is_authenticated_cached_and_network_biased(
     async def fake_search(query, limit, viewport):
         nonlocal calls
         calls += 1
-        assert query == "Rua Fumio Miyazi, Praia Grande, São Paulo"
+        assert query == "Rua Pelicano, Rio das Ostras"
         assert limit == 5
         assert viewport == [-46.53, -24.1, -46.35, -23.95]
         return [
             {
-                "label": "Rua Fumio Miyazi, Praia Grande, São Paulo, Brasil",
-                "latitude": -24.007,
-                "longitude": -46.425,
-                "viewport": [-46.43, -24.01, -46.42, -24.0],
-                "category": "highway",
-                "type": "residential",
+                "label": "Rua Pelicano, Rio das Ostras - RJ, Brasil",
+                "latitude": -22.526,
+                "longitude": -41.966,
+                "viewport": [-41.97, -22.53, -41.96, -22.52],
+                "category": "address",
+                "type": "route",
             }
         ]
 
+    monkeypatch.setattr("app.api.routes.geocoding.get_settings", RuntimeSettings)
     monkeypatch.setattr("app.api.routes.geocoding.search_addresses", fake_search)
-    path = f"/api/v1/geocoding/search?q=Rua%20Fumio%20Miyazi&network_id={network['id']}"
+    path = (
+        "/api/v1/geocoding/search?q=Rua%20Pelicano%2C%20Rio%20das%20Ostras"
+        f"&network_id={network['id']}"
+    )
     assert client.get(path).status_code == 401
 
     first = client.get(path, headers=viewer_headers)
     assert first.status_code == 200, first.text
     assert first.json()["cached"] is False
     assert first.json()["network_bias"] is True
-    assert first.json()["results"][0]["longitude"] == -46.425
+    assert first.json()["results"][0]["longitude"] == -41.966
 
     second = client.get(path, headers=viewer_headers)
     assert second.status_code == 200

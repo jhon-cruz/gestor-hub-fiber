@@ -34,13 +34,22 @@ async def search_address(
         if network is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="network not found")
     viewport = list(network.viewport) if network and network.viewport else None
-    normalized = " ".join(q.strip().lower().split())
-    effective_query = q.strip()
-    if network and network.city.casefold() not in normalized.casefold():
-        effective_query = f"{effective_query}, {network.city}, {network.state}"
     settings = get_settings()
+    effective_query = q.strip()
+    normalized = " ".join(effective_query.lower().split())
+    # Google already receives the selected network as a bounds bias. Appending
+    # that network's city makes explicit searches in another city contradictory
+    # (for example: "Rio das Ostras, Praia Grande, São Paulo").
+    if (
+        settings.geocoding_provider != "google"
+        and network
+        and network.city.casefold() not in normalized.casefold()
+    ):
+        effective_query = f"{effective_query}, {network.city}, {network.state}"
+    effective_normalized = " ".join(effective_query.lower().split())
     query_key = hashlib.sha256(
-        f"{settings.geocoding_provider}:br:{limit}:{network_id}:{viewport}:{normalized}".encode()
+        f"v2:{settings.geocoding_provider}:br:{limit}:{network_id}:{viewport}:"
+        f"{effective_normalized}".encode()
     ).hexdigest()
     cached = db.get(GeocodeCache, query_key)
     now = datetime.now(UTC)

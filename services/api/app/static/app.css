@@ -501,6 +501,14 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 :root[data-theme="dark"] .leaflet-control-zoom a { color: var(--ink) !important; background: var(--white) !important; }
 :root[data-theme="dark"] .leaflet-control-attribution { color: #8aa2b5; background: rgb(5 17 30 / 80%) !important; }
 :root[data-theme="dark"] .leaflet-control-attribution a { color: var(--blue); }
+.gm-style .google-address-popup {
+  max-width: 280px;
+  padding: 2px 3px;
+  color: #051a2c !important;
+  font: 600 12px/1.45 Inter, system-ui, sans-serif;
+}
+:root[data-theme="dark"] .gm-style .gm-style-iw-c,
+:root[data-theme="dark"] .gm-style .gm-style-iw-tc::after { background: #f8fbfd; }
 :root[data-theme="dark"] .map-heading,
 :root[data-theme="dark"] .stats-grid article,
 :root[data-theme="dark"] .detail-panel { border-color: rgb(71 108 136 / 55%); background: rgb(8 27 42 / 91%); }

@@ -802,7 +802,10 @@ function showAddressResult(result) {
       },
     });
     if (!state.googleInfoWindow) state.googleInfoWindow = new google.maps.InfoWindow();
-    state.googleInfoWindow.setContent(document.createTextNode(result.label));
+    const popupContent = document.createElement("div");
+    popupContent.className = "google-address-popup";
+    popupContent.textContent = result.label;
+    state.googleInfoWindow.setContent(popupContent);
     state.googleInfoWindow.open({map: state.map, anchor: state.addressMarker});
   } else {
     state.addressMarker = L.circleMarker([result.latitude, result.longitude], {
