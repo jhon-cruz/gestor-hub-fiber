@@ -341,7 +341,7 @@ function loadGoogleMaps(apiKey) {
       resolve();
     };
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callback}&v=weekly&language=pt-BR&region=BR`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callback}&loading=async&v=weekly&language=pt-BR&region=BR`;
     script.async = true;
     script.onerror = () => {
       window.clearTimeout(timeout);
@@ -363,8 +363,44 @@ function googleMarkerSvg(type, color) {
   };
   const symbol = symbols[type];
   if (!symbol) return null;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="17" fill="${color}" stroke="white" stroke-width="2"/><g fill="none" stroke="#051a2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${symbol}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="${color}" stroke="white" stroke-width="2"/><g fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${symbol}</g></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function googleMarkerSize() {
+  const zoom = mapZoom();
+  if (zoom <= 13) return 14;
+  if (zoom <= 15) return 19;
+  return 26;
+}
+
+function googleDataStyle(feature) {
+  const type = feature.getProperty("feature_type") || "other";
+  const color = feature.getProperty("_color") || TYPE_COLORS[type] || TYPE_COLORS.other;
+  const iconUrl = googleMarkerSvg(type, color);
+  const markerSize = googleMarkerSize();
+  return {
+    clickable: true,
+    title: feature.getProperty("name") || "Ativo da rede",
+    strokeColor: color,
+    strokeOpacity: .9,
+    strokeWeight: 4,
+    fillColor: color,
+    fillOpacity: .2,
+    icon: iconUrl ? {
+      url: iconUrl,
+      size: new google.maps.Size(36, 36),
+      scaledSize: new google.maps.Size(markerSize, markerSize),
+      anchor: new google.maps.Point(markerSize / 2, markerSize / 2),
+    } : {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: Math.max(4, markerSize / 4),
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: "#ffffff",
+      strokeWeight: 2,
+    },
+  };
 }
 
 function initializeGoogleMap() {
@@ -386,28 +422,7 @@ function initializeGoogleMap() {
     gestureHandling: "greedy",
   });
   state.googleData = new google.maps.Data({map: state.map});
-  state.googleData.setStyle((feature) => {
-    const type = feature.getProperty("feature_type") || "other";
-    const color = feature.getProperty("_color") || TYPE_COLORS[type] || TYPE_COLORS.other;
-    const iconUrl = googleMarkerSvg(type, color);
-    return {
-      clickable: true,
-      title: feature.getProperty("name") || "Ativo da rede",
-      strokeColor: color,
-      strokeOpacity: .9,
-      strokeWeight: 4,
-      fillColor: color,
-      fillOpacity: .2,
-      icon: iconUrl ? {url: iconUrl, scaledSize: new google.maps.Size(36, 36)} : {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 7,
-        fillColor: color,
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 2,
-      },
-    };
-  });
+  state.googleData.setStyle(googleDataStyle);
   state.googleData.addListener("click", (event) => {
     const feature = state.features.find((item) => item.id === event.feature.getProperty("_id"));
     if (feature) selectFeature(feature);
@@ -466,6 +481,9 @@ function updateMapMarkerDensity() {
   const zoom = mapZoom();
   container.classList.toggle("marker-density-wide", zoom <= 13);
   container.classList.toggle("marker-density-medium", zoom > 13 && zoom <= 15);
+  if (state.mapProvider === "google" && state.googleData) {
+    state.googleData.setStyle(googleDataStyle);
+  }
 }
 
 function layerStyle(feature) {

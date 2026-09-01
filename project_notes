@@ -12,7 +12,7 @@
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.10.0`
+- Versão atual: `0.10.1`
 
 ## Entregue nesta fase
 
@@ -80,6 +80,8 @@
 - [x] Adaptador Google Geocoding com viés pela rede, normalização de precisão e cache limitado a 30 dias.
 - [x] Chaves Google separadas entre navegador e servidor, configuração por ambiente e CSP atualizada.
 - [x] Google Maps e Google Geocoding ativados no ambiente local com credenciais externas restritas por serviço.
+- [x] Busca de endereço reposicionada ao lado do painel territorial, sem sobreposição com o seletor de rede.
+- [x] Marcadores Google corrigidos com SVG dimensionado, âncora central e escala adaptativa por zoom.
 
 ## Validação executada
 
@@ -88,7 +90,7 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 19 testes aprovados na versão 0.10.0.
+- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 19 testes aprovados na versão 0.10.1.
 - Interface local recarregada em navegador real, sem erros ou avisos no console; credenciais Google configuradas fora do repositório.
 - Maps JavaScript API validada com referenciador `localhost:3030`, resposta HTTP 200 e ausência de erros de chave, faturamento ou ativação.
 - Google Geocoding validado em consulta real, retornando resultado normalizado pelo provedor `google`.

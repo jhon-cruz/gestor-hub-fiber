@@ -15,14 +15,14 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css?v=0.10.0">
+    <link rel="stylesheet" href="/static/app.css?v=0.10.1">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js?v=0.10.0"></script>
+    <script defer src="/static/app.js?v=0.10.1"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -153,26 +153,28 @@
         <section id="map-view" class="map-stage app-view">
           <div id="map" aria-label="Mapa interativo da rede"></div>
 
-          <div class="map-overlay map-heading">
-            <p class="overline">Território operacional</p>
-            <h1>Mapa da rede</h1>
-            <p id="map-summary">Carregando ativos geográficos...</p>
-            <small id="map-data-status" class="map-data-status">Mapa-base carregado sob demanda</small>
-            <div class="network-switcher">
-              <label><span>Rede</span><select id="network-select" aria-label="Selecionar rede"><option value="">Todas as redes</option></select></label>
-              <button id="add-network-button" class="icon-button admin-only" type="button" aria-label="Criar rede">＋</button>
+          <div class="map-primary-overlays">
+            <div class="map-overlay map-heading">
+              <p class="overline">Território operacional</p>
+              <h1>Mapa da rede</h1>
+              <p id="map-summary">Carregando ativos geográficos...</p>
+              <small id="map-data-status" class="map-data-status">Mapa-base carregado sob demanda</small>
+              <div class="network-switcher">
+                <label><span>Rede</span><select id="network-select" aria-label="Selecionar rede"><option value="">Todas as redes</option></select></label>
+                <button id="add-network-button" class="icon-button admin-only" type="button" aria-label="Criar rede">＋</button>
+              </div>
             </div>
-          </div>
 
-          <section class="address-search-panel" aria-label="Busca de endereço">
-            <form id="address-search-form">
-              <span aria-hidden="true">⌖</span>
-              <input id="address-search-input" minlength="3" maxlength="200" placeholder="Rua, bairro, cidade e estado" aria-label="Buscar endereço" required>
-              <button class="button primary small" type="submit">Buscar endereço</button>
-            </form>
-            <small id="address-search-hint" class="address-search-hint">A rede selecionada prioriza resultados próximos. Você também pode informar um CEP.</small>
-            <div id="address-results" class="address-results hidden" aria-live="polite"></div>
-          </section>
+            <section class="address-search-panel" aria-label="Busca de endereço">
+              <form id="address-search-form">
+                <span aria-hidden="true">⌖</span>
+                <input id="address-search-input" minlength="3" maxlength="200" placeholder="Rua, bairro, cidade e estado" aria-label="Buscar endereço" required>
+                <button class="button primary small" type="submit">Buscar endereço</button>
+              </form>
+              <small id="address-search-hint" class="address-search-hint">A rede selecionada prioriza resultados próximos. Você também pode informar um CEP.</small>
+              <div id="address-results" class="address-results hidden" aria-live="polite"></div>
+            </section>
+          </div>
 
           <section class="stats-grid" aria-label="Resumo do inventário">
             <article><span class="stat-icon green">●</span><div><small>Ativos no mapa</small><strong id="stat-total">0</strong></div><em id="stat-total-label">sincronizado</em></article>

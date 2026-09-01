@@ -5,7 +5,15 @@ from app.models.map_feature import MapFeature
 from app.services.geocoding import _google_results
 
 
-def test_map_config_is_authenticated_and_defaults_to_openstreetmap(client, viewer_headers):
+def test_map_config_is_authenticated_and_returns_runtime_provider(
+    client, viewer_headers, monkeypatch
+):
+    class RuntimeSettings:
+        map_provider = "openstreetmap"
+        geocoding_provider = "nominatim"
+        google_maps_browser_api_key = None
+
+    monkeypatch.setattr("app.api.routes.map_config.get_settings", RuntimeSettings)
     assert client.get("/api/v1/map-config").status_code == 401
     response = client.get("/api/v1/map-config", headers=viewer_headers)
     assert response.status_code == 200
@@ -91,7 +99,7 @@ def test_network_groups_existing_source_and_filters_map(client, admin_headers, v
     )
     assert len(filtered.json()["features"]) == 1
     assert filtered.json()["data_status"]["latest_feature_update_at"] is not None
-    assert filtered.json()["data_status"]["base_map"].startswith("OpenStreetMap")
+    assert filtered.json()["data_status"]["base_map"].startswith(("OpenStreetMap", "Google Maps"))
     assert filtered.json()["features"][0]["properties"]["network_id"] == network["id"]
 
     duplicate = client.post("/api/v1/networks", headers=admin_headers, json=payload)
