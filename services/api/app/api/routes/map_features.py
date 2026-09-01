@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 
 from app.api.dependencies import AdminUser, CurrentUser, DbSession
+from app.core.config import get_settings
 from app.models.map_feature import MapFeature
 from app.models.map_import import MapImport
 from app.models.network import ServiceNetwork
@@ -70,6 +71,11 @@ def list_map_features(
         query = query.where(MapFeature.network_id == network_id)
     rows = list(db.execute(query.limit(limit).offset(offset)))
     latest_import = db.scalar(select(MapImport).order_by(MapImport.created_at.desc()).limit(1))
+    base_map = (
+        "Google Maps — cartografia carregada sob demanda"
+        if get_settings().map_provider == "google"
+        else "OpenStreetMap — mosaicos carregados sob demanda"
+    )
     return {
         "type": "FeatureCollection",
         "features": [
@@ -79,7 +85,7 @@ def list_map_features(
             "latest_feature_update_at": db.scalar(select(func.max(MapFeature.updated_at))),
             "latest_import_at": latest_import.created_at if latest_import else None,
             "latest_import_filename": latest_import.filename if latest_import else None,
-            "base_map": "OpenStreetMap — mosaicos carregados sob demanda",
+            "base_map": base_map,
         },
     }
 

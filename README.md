@@ -37,6 +37,8 @@ make dev
 
 A interface ficará em <http://localhost:3030>, a documentação OpenAPI em <http://localhost:3030/docs> e o PostgreSQL permanecerá acessível somente pela rede interna do Compose. No primeiro acesso, a tela inicial solicita a criação do administrador. A alternativa por terminal continua disponível com `make create-admin`.
 
+O ambiente inicia sem credenciais externas usando OpenStreetMap/Nominatim. Para ativar Google Maps e Google Geocoding com chaves restritas, consulte [Redes geográficas e busca de endereço](docs/networks-and-address-search.md#google-maps-e-google-geocoding).
+
 Para executar os testes:
 
 ```bash

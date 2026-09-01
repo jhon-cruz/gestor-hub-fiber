@@ -5,14 +5,14 @@
 ## Status geral
 
 - Fase atual: Fase 2 — Domínio óptico e operação geográfica
-- Estado: núcleo óptico operacional; busca geográfica, continuidade e orçamento óptico implementados
+- Estado: núcleo óptico operacional; Google Maps/Geocoding, continuidade e orçamento óptico implementados
 - Repositório do produto: `https://github.com/jhon-cruz/gestor-hub-fiber`
 - Produto: Gestor Hub Fiber
 - Especificação mestre: `PROMPT_PROJETO_FIBER_GIS_ERP.md`
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.9.0`
+- Versão atual: `0.10.0`
 
 ## Entregue nesta fase
 
@@ -76,6 +76,9 @@
 - [x] Orçamento óptico com perda acumulada, potência recebida, margem e indicação de valores estimados.
 - [x] Interface administrativa para conectar/desconectar fibra–porta e interface de rastreamento para ambos os papéis.
 - [x] Data e arquivo da última planta importada visíveis no mapa, separados do mapa-base OpenStreetMap dinâmico.
+- [x] Camada cartográfica configurável entre Google Maps e OpenStreetMap, preservando GeoJSON, redes, ícones, seleção e desenho.
+- [x] Adaptador Google Geocoding com viés pela rede, normalização de precisão e cache limitado a 30 dias.
+- [x] Chaves Google separadas entre navegador e servidor, configuração por ambiente e CSP atualizada.
 
 ## Validação executada
 
@@ -84,7 +87,8 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 17 testes aprovados.
+- Testes da API/RBAC/interface/importação/domínio óptico/redes/geocodificação/topologia: 19 testes aprovados na versão 0.10.0.
+- Interface local recarregada em navegador real, sem erros ou avisos no console; carregamento efetivo do Google aguarda as chaves restritas do projeto Google Cloud.
 - Fluxos visuais validados no navegador: bootstrap, login, criação de CTO, gestão de usuários e restrições de `viewer`.
 - KMZ real validado: 1.006 elementos importados, exibidos e reimportados sem duplicação; dados técnicos temporários removidos após o teste.
 - Tema escuro e inventário validados no navegador com os 1.006 elementos reais, incluindo filtros e retorno ao ativo no mapa.

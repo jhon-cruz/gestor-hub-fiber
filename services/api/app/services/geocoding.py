@@ -21,11 +21,12 @@ class GeocodingUnavailableError(RuntimeError):
 
 def provider_attribution() -> str:
     """Return the attribution required by the active coordinate provider."""
-    return (
-        "© OpenStreetMap contributors · geocodificação Geoapify"
-        if get_settings().geocoding_provider == "geoapify"
-        else "© OpenStreetMap contributors · Nominatim"
-    )
+    provider = get_settings().geocoding_provider
+    if provider == "google":
+        return "Google Maps"
+    if provider == "geoapify":
+        return "© OpenStreetMap contributors · geocodificação Geoapify"
+    return "© OpenStreetMap contributors · Nominatim"
 
 
 async def _lookup_cep(client: httpx2.AsyncClient, query: str) -> str:
@@ -137,6 +138,55 @@ def _geoapify_results(payload: Any) -> list[dict[str, Any]]:
     return results
 
 
+def _google_results(payload: Any) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    items = payload.get("results", []) if isinstance(payload, dict) else []
+    for item in items:
+        geometry = item.get("geometry") if isinstance(item.get("geometry"), dict) else {}
+        location = geometry.get("location") if isinstance(geometry.get("location"), dict) else {}
+        viewport = geometry.get("viewport") if isinstance(geometry.get("viewport"), dict) else {}
+        southwest = (
+            viewport.get("southwest") if isinstance(viewport.get("southwest"), dict) else location
+        )
+        northeast = (
+            viewport.get("northeast") if isinstance(viewport.get("northeast"), dict) else location
+        )
+        try:
+            latitude = float(location["lat"])
+            longitude = float(location["lng"])
+            west = float(southwest.get("lng", longitude))
+            south = float(southwest.get("lat", latitude))
+            east = float(northeast.get("lng", longitude))
+            north = float(northeast.get("lat", latitude))
+        except KeyError, TypeError, ValueError:
+            continue
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            continue
+        address: dict[str, str] = {}
+        for component in item.get("address_components", []):
+            if not isinstance(component, dict):
+                continue
+            value = str(component.get("long_name", ""))[:200]
+            for component_type in component.get("types", []):
+                address[str(component_type)[:80]] = value
+        types = item.get("types") if isinstance(item.get("types"), list) else []
+        results.append(
+            {
+                "label": str(item.get("formatted_address", ""))[:500],
+                "latitude": latitude,
+                "longitude": longitude,
+                "viewport": [west, south, east, north],
+                "category": "address",
+                "type": str(types[0] if types else "place")[:80],
+                "precision": str(geometry.get("location_type", "APPROXIMATE"))[:80],
+                "relevance": 1.0,
+                "address": address,
+                "provider": "google",
+            }
+        )
+    return results
+
+
 async def search_addresses(
     query: str,
     limit: int,
@@ -160,7 +210,28 @@ async def search_addresses(
                 headers={"User-Agent": USER_AGENT, "Accept-Language": "pt-BR,pt;q=0.9"},
             ) as client:
                 expanded_query = await _lookup_cep(client, query)
-                if settings.geocoding_provider == "geoapify":
+                if settings.geocoding_provider == "google":
+                    params: dict[str, Any] = {
+                        "address": expanded_query,
+                        "key": settings.geocoding_api_key.get_secret_value(),
+                        "language": "pt-BR",
+                        "region": "br",
+                        "components": "country:BR",
+                    }
+                    if viewport:
+                        west, south, east, north = viewport
+                        params["bounds"] = f"{south},{west}|{north},{east}"
+                    response = await client.get(
+                        f"{settings.google_geocoding_base_url}/json", params=params
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                    if payload.get("status") not in {"OK", "ZERO_RESULTS"}:
+                        raise GeocodingUnavailableError(
+                            f"Google Geocoding returned {payload.get('status', 'UNKNOWN_ERROR')}"
+                        )
+                    results = _google_results(payload)
+                elif settings.geocoding_provider == "geoapify":
                     params: dict[str, Any] = {
                         "text": expanded_query,
                         "format": "json",

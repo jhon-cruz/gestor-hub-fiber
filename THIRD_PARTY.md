@@ -38,6 +38,14 @@ Os tiles públicos são adequados somente ao desenvolvimento e uso interativo mo
 - Política pública: <https://operations.osmfoundation.org/policies/nominatim/>
 - Uso: geocodificação de buscas iniciadas explicitamente pelo usuário, limitada a resultados brasileiros.
 
+## Google Maps Platform (opcional)
+
+- Produto: Maps JavaScript API e Geocoding API
+- Site: <https://mapsplatform.google.com/>
+- Termos: <https://cloud.google.com/maps-platform/terms>
+- Uso: mapa-base e busca de endereços quando habilitados pelo operador com credenciais próprias.
+- Observação: serviço proprietário externo, sujeito aos termos, limites e preços da conta Google Cloud do operador; não é redistribuído como parte do código GPL.
+
 A aplicação não implementa autocomplete, limita as chamadas ao provedor público a no máximo uma por segundo, usa identificação própria, mantém cache local e exibe atribuição. Uma implantação com volume elevado deve configurar um serviço próprio ou provedor contratado.
 
 ## defusedxml

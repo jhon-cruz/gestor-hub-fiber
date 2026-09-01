@@ -7,20 +7,22 @@
     <title>Gestor Hub Fiber</title>
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
+    <link rel="preconnect" href="https://maps.googleapis.com">
+    <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css?v=0.9.0">
+    <link rel="stylesheet" href="/static/app.css?v=0.10.0">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js?v=0.9.0"></script>
+    <script defer src="/static/app.js?v=0.10.0"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -155,7 +157,7 @@
             <p class="overline">Território operacional</p>
             <h1>Mapa da rede</h1>
             <p id="map-summary">Carregando ativos geográficos...</p>
-            <small id="map-data-status" class="map-data-status">Mapa-base OpenStreetMap carregado sob demanda</small>
+            <small id="map-data-status" class="map-data-status">Mapa-base carregado sob demanda</small>
             <div class="network-switcher">
               <label><span>Rede</span><select id="network-select" aria-label="Selecionar rede"><option value="">Todas as redes</option></select></label>
               <button id="add-network-button" class="icon-button admin-only" type="button" aria-label="Criar rede">＋</button>

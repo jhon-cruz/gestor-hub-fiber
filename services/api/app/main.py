@@ -15,6 +15,7 @@ from app.api.routes import (
     fiber_topology,
     geocoding,
     imports,
+    map_config,
     map_features,
     networks,
     optical,
@@ -42,6 +43,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(map_features.router, prefix="/api/v1")
+app.include_router(map_config.router, prefix="/api/v1")
 app.include_router(imports.router, prefix="/api/v1")
 app.include_router(optical.router, prefix="/api/v1")
 app.include_router(optical.ports_router, prefix="/api/v1")
@@ -63,10 +65,12 @@ async def security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' https://unpkg.com; "
+        "script-src 'self' https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com; "
         "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-        "img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com; "
-        "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        "img-src 'self' data: blob: https://tile.openstreetmap.org https://unpkg.com "
+        "https://*.googleapis.com https://*.gstatic.com; "
+        "connect-src 'self' https://*.googleapis.com; worker-src 'self' blob:; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     )
     return response
 

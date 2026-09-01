@@ -2,6 +2,48 @@
 
 from app.core.database import SessionLocal
 from app.models.map_feature import MapFeature
+from app.services.geocoding import _google_results
+
+
+def test_map_config_is_authenticated_and_defaults_to_openstreetmap(client, viewer_headers):
+    assert client.get("/api/v1/map-config").status_code == 401
+    response = client.get("/api/v1/map-config", headers=viewer_headers)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "provider": "openstreetmap",
+        "geocoding_provider": "nominatim",
+        "google_maps_browser_api_key": None,
+    }
+
+
+def test_google_geocoding_response_is_normalized():
+    results = _google_results(
+        {
+            "results": [
+                {
+                    "formatted_address": "Rua Cano, Maricá - RJ, Brasil",
+                    "types": ["route"],
+                    "geometry": {
+                        "location": {"lat": -22.94, "lng": -42.82},
+                        "location_type": "GEOMETRIC_CENTER",
+                        "viewport": {
+                            "southwest": {"lat": -22.95, "lng": -42.83},
+                            "northeast": {"lat": -22.93, "lng": -42.81},
+                        },
+                    },
+                    "address_components": [
+                        {"long_name": "Rua Cano", "types": ["route"]},
+                        {"long_name": "Maricá", "types": ["administrative_area_level_2"]},
+                    ],
+                }
+            ]
+        }
+    )
+    assert results[0]["provider"] == "google"
+    assert results[0]["precision"] == "GEOMETRIC_CENTER"
+    assert results[0]["viewport"] == [-42.83, -22.95, -42.81, -22.93]
+    assert results[0]["address"]["route"] == "Rua Cano"
 
 
 def test_network_groups_existing_source_and_filters_map(client, admin_headers, viewer_headers):

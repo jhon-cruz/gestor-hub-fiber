@@ -30,6 +30,13 @@ const FIBER_COLORS = {
   black: "#1c2630", gray: "#8b99a7", orange: "#ee8a28", aqua: "#17c6d8",
 };
 
+const PRECISION_LABELS = {
+  ROOFTOP: "endereço exato",
+  RANGE_INTERPOLATED: "número interpolado",
+  GEOMETRIC_CENTER: "centro da via",
+  APPROXIMATE: "aproximada",
+};
+
 const TYPE_LABELS = {
   cto: "CTO",
   pole: "Poste",
@@ -63,7 +70,11 @@ const state = {
   user: null,
   features: [],
   map: null,
+  mapProvider: null,
+  mapConfig: null,
   featureGroup: null,
+  googleData: null,
+  googleInfoWindow: null,
   layers: new Map(),
   selected: null,
   draw: null,
@@ -261,8 +272,9 @@ async function enterApplication() {
   $("#user-avatar").textContent = state.user.username.slice(0, 1).toUpperCase();
   $("#auth-screen").classList.add("hidden");
   shell.classList.remove("hidden");
-  initializeMap();
-  window.setTimeout(() => state.map.invalidateSize(), 50);
+  state.mapConfig = await request("/api/v1/map-config");
+  await initializeMap();
+  window.setTimeout(invalidateMap, 50);
   await loadFeatures(true);
   await Promise.all([loadNetworks(), loadOpticalDevices(), loadCables()]);
 }
@@ -315,12 +327,98 @@ async function handleSetup(event) {
   }
 }
 
-function initializeMap() {
-  if (state.map) return;
-  if (!window.L) {
-    $("#map-loading").textContent = "Não foi possível carregar a biblioteca do mapa. Verifique a internet.";
-    return;
-  }
+function loadGoogleMaps(apiKey) {
+  if (window.google?.maps) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const callback = `gestorHubGoogleMapsReady${Date.now()}`;
+    const timeout = window.setTimeout(() => {
+      delete window[callback];
+      reject(new Error("O Google Maps não respondeu dentro do tempo esperado."));
+    }, 15000);
+    window[callback] = () => {
+      window.clearTimeout(timeout);
+      delete window[callback];
+      resolve();
+    };
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callback}&v=weekly&language=pt-BR&region=BR`;
+    script.async = true;
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      delete window[callback];
+      reject(new Error("Não foi possível carregar o Google Maps. Verifique a chave e a conexão."));
+    };
+    document.head.append(script);
+  });
+}
+
+function googleMarkerSvg(type, color) {
+  const symbols = {
+    cto: '<rect x="8" y="9" width="20" height="18" rx="3"/><path d="M12 14h12M12 19h12M14 27v3M22 27v3"/>',
+    splice_box: '<rect x="7" y="8" width="22" height="20" rx="7"/><path d="M11 13c5 0 5 10 10 10h4M11 23c5 0 5-10 10-10h4"/>',
+    splitter: '<path d="M10 9h6v7m0 0v11m0-11h6v-4h5m-11 9h6v5h5"/><circle cx="10" cy="9" r="2"/><circle cx="29" cy="12" r="2"/><circle cx="29" cy="26" r="2"/>',
+    olt: '<rect x="7" y="7" width="22" height="22" rx="3"/><path d="M11 12h14M11 17h14M11 22h8"/><circle cx="23" cy="22" r="1.5"/>',
+    dio: '<rect x="6" y="10" width="24" height="17" rx="3"/><circle cx="12" cy="18.5" r="2"/><circle cx="18" cy="18.5" r="2"/><circle cx="24" cy="18.5" r="2"/>',
+    ont: '<rect x="8" y="14" width="20" height="14" rx="3"/><path d="M13 14V9m10 5V9M13 10c3-3 7-3 10 0M12 23h12"/><circle cx="18" cy="19" r="1.5"/>',
+  };
+  const symbol = symbols[type];
+  if (!symbol) return null;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="17" fill="${color}" stroke="white" stroke-width="2"/><g fill="none" stroke="#051a2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${symbol}</g></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function initializeGoogleMap() {
+  state.mapProvider = "google";
+  state.map = new google.maps.Map($("#map"), {
+    center: {lat: -14.235, lng: -51.9253},
+    zoom: 4,
+    mapTypeId: "roadmap",
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+    zoomControlOptions: {position: google.maps.ControlPosition.LEFT_BOTTOM},
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      position: google.maps.ControlPosition.LEFT_BOTTOM,
+      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+      mapTypeIds: ["roadmap", "satellite"],
+    },
+    gestureHandling: "greedy",
+  });
+  state.googleData = new google.maps.Data({map: state.map});
+  state.googleData.setStyle((feature) => {
+    const type = feature.getProperty("feature_type") || "other";
+    const color = feature.getProperty("_color") || TYPE_COLORS[type] || TYPE_COLORS.other;
+    const iconUrl = googleMarkerSvg(type, color);
+    return {
+      clickable: true,
+      title: feature.getProperty("name") || "Ativo da rede",
+      strokeColor: color,
+      strokeOpacity: .9,
+      strokeWeight: 4,
+      fillColor: color,
+      fillOpacity: .2,
+      icon: iconUrl ? {url: iconUrl, scaledSize: new google.maps.Size(36, 36)} : {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 7,
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+      },
+    };
+  });
+  state.googleData.addListener("click", (event) => {
+    const feature = state.features.find((item) => item.id === event.feature.getProperty("_id"));
+    if (feature) selectFeature(feature);
+  });
+  state.map.addListener("click", handleMapClick);
+  state.map.addListener("zoom_changed", updateMapMarkerDensity);
+}
+
+function initializeOpenStreetMap() {
+  if (!window.L) throw new Error("Não foi possível carregar a biblioteca Leaflet.");
+  state.mapProvider = "openstreetmap";
   state.map = L.map("map", {zoomControl: false, preferCanvas: true}).setView([-14.235, -51.9253], 4);
   L.control.zoom({position: "bottomleft"}).addTo(state.map);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -330,13 +428,42 @@ function initializeMap() {
   state.featureGroup = L.featureGroup().addTo(state.map);
   state.map.on("click", handleMapClick);
   state.map.on("zoomend", updateMapMarkerDensity);
-  updateMapMarkerDensity();
+}
+
+async function initializeMap() {
+  if (state.map) return;
+  try {
+    if (state.mapConfig?.provider === "google") {
+      await loadGoogleMaps(state.mapConfig.google_maps_browser_api_key);
+      initializeGoogleMap();
+    } else {
+      initializeOpenStreetMap();
+    }
+    updateMapMarkerDensity();
+  } catch (error) {
+    $("#map-loading").textContent = error.message;
+    throw error;
+  }
+}
+
+function invalidateMap() {
+  if (!state.map) return;
+  if (state.mapProvider === "google") google.maps.event.trigger(state.map, "resize");
+  else state.map.invalidateSize();
+}
+
+function mapContainer() {
+  return state.mapProvider === "google" ? state.map.getDiv() : state.map.getContainer();
+}
+
+function mapZoom() {
+  return Number(state.map?.getZoom?.() || 4);
 }
 
 function updateMapMarkerDensity() {
   if (!state.map) return;
-  const container = state.map.getContainer();
-  const zoom = state.map.getZoom();
+  const container = mapContainer();
+  const zoom = mapZoom();
   container.classList.toggle("marker-density-wide", zoom <= 13);
   container.classList.toggle("marker-density-medium", zoom > 13 && zoom <= 15);
 }
@@ -382,6 +509,88 @@ function pointLayer(feature, latlng) {
   });
 }
 
+function extendCoordinateBounds(bounds, coordinates) {
+  if (!Array.isArray(coordinates)) return;
+  if (
+    coordinates.length >= 2
+    && Number.isFinite(Number(coordinates[0]))
+    && Number.isFinite(Number(coordinates[1]))
+  ) {
+    const longitude = Number(coordinates[0]);
+    const latitude = Number(coordinates[1]);
+    bounds.west = Math.min(bounds.west, longitude);
+    bounds.south = Math.min(bounds.south, latitude);
+    bounds.east = Math.max(bounds.east, longitude);
+    bounds.north = Math.max(bounds.north, latitude);
+    return;
+  }
+  coordinates.forEach((item) => extendCoordinateBounds(bounds, item));
+}
+
+function featuresBounds(features) {
+  const bounds = {west: Infinity, south: Infinity, east: -Infinity, north: -Infinity};
+  features.forEach((feature) => extendCoordinateBounds(bounds, feature.geometry?.coordinates));
+  return Number.isFinite(bounds.west)
+    ? [bounds.west, bounds.south, bounds.east, bounds.north]
+    : null;
+}
+
+function fitMapBounds(bounds, padding = 100, maxZoom = 16) {
+  if (!state.map || !bounds?.length) return;
+  const [west, south, east, north] = bounds;
+  if (state.mapProvider === "google") {
+    const target = new google.maps.LatLngBounds({lat: south, lng: west}, {lat: north, lng: east});
+    const listener = google.maps.event.addListenerOnce(state.map, "idle", () => {
+      if (mapZoom() > maxZoom) state.map.setZoom(maxZoom);
+    });
+    state.map.fitBounds(target, padding);
+    window.setTimeout(() => google.maps.event.removeListener(listener), 3000);
+  } else {
+    state.map.fitBounds([[south, west], [north, east]], {padding: [padding, padding], maxZoom});
+  }
+}
+
+function currentMapBounds() {
+  const bounds = state.map?.getBounds?.();
+  if (!bounds) return null;
+  if (state.mapProvider === "google") {
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    return [southWest.lng(), southWest.lat(), northEast.lng(), northEast.lat()];
+  }
+  return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+}
+
+function removeMapOverlay(overlay) {
+  if (!overlay || !state.map) return;
+  if (state.mapProvider === "google") overlay.setMap(null);
+  else state.map.removeLayer(overlay);
+}
+
+function renderGoogleFeatures(visible) {
+  state.googleData.forEach((feature) => state.googleData.remove(feature));
+  state.layers.clear();
+  for (const feature of visible) {
+    const type = feature.properties.feature_type;
+    const color = feature.properties.kml_style?.line_color
+      || feature.properties.kml_style?.icon_color
+      || TYPE_COLORS[type]
+      || TYPE_COLORS.other;
+    const geojson = {
+      type: "Feature",
+      geometry: feature.geometry,
+      properties: {
+        _id: feature.id,
+        _color: color,
+        feature_type: type,
+        name: feature.properties.name,
+      },
+    };
+    const [dataFeature] = state.googleData.addGeoJson(geojson);
+    if (dataFeature) state.layers.set(feature.id, {dataFeature, geometry: feature.geometry});
+  }
+}
+
 function selectedMapFeatures() {
   if (!state.selectedNetworkId) return state.features;
   return state.features.filter(
@@ -390,24 +599,29 @@ function selectedMapFeatures() {
 }
 
 function renderFeatures(features = selectedMapFeatures()) {
-  if (!state.featureGroup) return;
-  state.featureGroup.clearLayers();
-  state.layers.clear();
+  if (!state.map) return;
   const query = $("#feature-search").value.trim().toLowerCase();
   const visible = features.filter((feature) => {
     const props = feature.properties;
     return !query || `${props.name} ${props.feature_type} ${props.status}`.toLowerCase().includes(query);
   });
-  for (const feature of visible) {
-    const layer = L.geoJSON(feature, {style: layerStyle, pointToLayer: pointLayer}).getLayers()[0];
-    if (!layer) continue;
-    layer.on("click", () => selectFeature(feature));
-    layer.bindTooltip(feature.properties.name, {direction: "top", offset: [0, -6]});
-    state.featureGroup.addLayer(layer);
-    state.layers.set(feature.id, layer);
+  if (state.mapProvider === "google") {
+    renderGoogleFeatures(visible);
+  } else {
+    state.featureGroup.clearLayers();
+    state.layers.clear();
+    for (const feature of visible) {
+      const layer = L.geoJSON(feature, {style: layerStyle, pointToLayer: pointLayer}).getLayers()[0];
+      if (!layer) continue;
+      layer.on("click", () => selectFeature(feature));
+      layer.bindTooltip(feature.properties.name, {direction: "top", offset: [0, -6]});
+      state.featureGroup.addLayer(layer);
+      state.layers.set(feature.id, layer);
+    }
   }
-  if (!state.hasFitBounds && visible.length && state.featureGroup.getBounds().isValid()) {
-    state.map.fitBounds(state.featureGroup.getBounds(), {padding: [90, 90], maxZoom: 16});
+  const visibleBounds = featuresBounds(visible);
+  if (!state.hasFitBounds && visibleBounds) {
+    fitMapBounds(visibleBounds, 90, 16);
     state.hasFitBounds = true;
   }
   updateStats(features);
@@ -421,10 +635,10 @@ async function loadFeatures(forceFit = false) {
     state.features = collection.features;
     if (collection.data_status?.latest_import_at) {
       const imported = new Date(collection.data_status.latest_import_at).toLocaleString("pt-BR");
-      $("#map-data-status").textContent = `Planta: ${collection.data_status.latest_import_filename} · importada em ${imported}`;
+      $("#map-data-status").textContent = `Planta: ${collection.data_status.latest_import_filename} · importada em ${imported} · ${collection.data_status.base_map}`;
     } else {
       $("#map-data-status").textContent = collection.data_status?.base_map
-        || "Mapa-base OpenStreetMap carregado sob demanda";
+        || "Mapa-base carregado sob demanda";
     }
     renderFeatures();
     renderInventory();
@@ -514,10 +728,9 @@ function selectNetwork(networkId, moveMap = true) {
   const prefix = network ? `${network.name} · ` : "";
   $("#map-summary").textContent = `${prefix}${selected.length} ativo${selected.length === 1 ? "" : "s"}`;
   if (moveMap && network?.viewport?.length === 4 && state.map) {
-    const [west, south, east, north] = network.viewport;
-    state.map.fitBounds([[south, west], [north, east]], {padding: [100, 100], maxZoom: 16});
-  } else if (moveMap && !network && selected.length && state.featureGroup.getBounds().isValid()) {
-    state.map.fitBounds(state.featureGroup.getBounds(), {padding: [100, 100], maxZoom: 16});
+    fitMapBounds(network.viewport, 100, 16);
+  } else if (moveMap && !network && selected.length) {
+    fitMapBounds(featuresBounds(selected), 100, 16);
   }
 }
 
@@ -525,7 +738,7 @@ async function createNetwork(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const sourceNamespace = $("#network-source").value || null;
-  const bounds = state.map.getBounds();
+  const bounds = currentMapBounds();
   $("#network-error").textContent = "";
   setBusy(form, true);
   try {
@@ -536,9 +749,7 @@ async function createNetwork(event) {
         city: $("#network-city").value.trim(),
         state: $("#network-state").value.trim(),
         source_namespace: sourceNamespace,
-        viewport: sourceNamespace ? null : [
-          bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth(),
-        ],
+        viewport: sourceNamespace ? null : bounds,
       }),
     });
     form.reset();
@@ -556,16 +767,34 @@ async function createNetwork(event) {
 }
 
 function showAddressResult(result) {
-  const [west, south, east, north] = result.viewport;
-  state.map.fitBounds([[south, west], [north, east]], {padding: [120, 120], maxZoom: 18});
-  if (state.addressMarker) state.map.removeLayer(state.addressMarker);
-  state.addressMarker = L.circleMarker([result.latitude, result.longitude], {
-    radius: 9,
-    color: "#ffffff",
-    weight: 3,
-    fillColor: "#ff5b35",
-    fillOpacity: 1,
-  }).addTo(state.map).bindPopup(result.label).openPopup();
+  fitMapBounds(result.viewport, 120, 18);
+  removeMapOverlay(state.addressMarker);
+  if (state.mapProvider === "google") {
+    state.addressMarker = new google.maps.Marker({
+      map: state.map,
+      position: {lat: result.latitude, lng: result.longitude},
+      title: result.label,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: "#ff5b35",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+      },
+    });
+    if (!state.googleInfoWindow) state.googleInfoWindow = new google.maps.InfoWindow();
+    state.googleInfoWindow.setContent(document.createTextNode(result.label));
+    state.googleInfoWindow.open({map: state.map, anchor: state.addressMarker});
+  } else {
+    state.addressMarker = L.circleMarker([result.latitude, result.longitude], {
+      radius: 9,
+      color: "#ffffff",
+      weight: 3,
+      fillColor: "#ff5b35",
+      fillOpacity: 1,
+    }).addTo(state.map).bindPopup(result.label).openPopup();
+  }
   $("#address-results").classList.add("hidden");
 }
 
@@ -583,7 +812,8 @@ function renderAddressResults(payload) {
     const label = document.createElement("strong");
     label.textContent = result.label;
     const meta = document.createElement("small");
-    const precision = result.precision ? ` · precisão ${result.precision}` : "";
+    const precisionLabel = PRECISION_LABELS[result.precision] || result.precision;
+    const precision = precisionLabel ? ` · precisão ${precisionLabel}` : "";
     meta.textContent = `${result.type || "Endereço"}${precision}`;
     button.append(label, meta);
     button.addEventListener("click", () => showAddressResult(result));
@@ -1483,7 +1713,7 @@ function showView(view) {
   );
   $("#app-shell").classList.remove("menu-open");
   if (view === "map") {
-    window.setTimeout(() => state.map?.invalidateSize(), 30);
+    window.setTimeout(invalidateMap, 30);
   } else if (view === "inventory") {
     renderInventory();
   } else if (view === "optical") {
@@ -1503,8 +1733,15 @@ function openFeatureOnMap(feature) {
   showView("map");
   selectFeature(feature);
   const layer = state.layers.get(feature.id);
-  if (layer?.getLatLng) state.map.setView(layer.getLatLng(), Math.max(state.map.getZoom(), 17));
-  else if (layer?.getBounds && layer.getBounds().isValid()) {
+  if (state.mapProvider === "google") {
+    const bounds = featuresBounds([feature]);
+    if (feature.geometry?.type === "Point") {
+      state.map.setCenter({lat: feature.geometry.coordinates[1], lng: feature.geometry.coordinates[0]});
+      state.map.setZoom(Math.max(mapZoom(), 17));
+    } else fitMapBounds(bounds, 100, 17);
+  } else if (layer?.getLatLng) {
+    state.map.setView(layer.getLatLng(), Math.max(mapZoom(), 17));
+  } else if (layer?.getBounds && layer.getBounds().isValid()) {
     state.map.fitBounds(layer.getBounds(), {padding: [100, 100], maxZoom: 17});
   }
 }
@@ -1629,16 +1866,33 @@ function beginDrawing(event) {
 
 function handleMapClick(event) {
   if (!state.draw) return;
-  state.draw.points.push(event.latlng);
+  const point = state.mapProvider === "google"
+    ? {lat: event.latLng.lat(), lng: event.latLng.lng()}
+    : event.latlng;
+  state.draw.points.push(point);
   if (state.draw.geometryType === "Point") {
-    saveDrawnFeature({type: "Point", coordinates: [event.latlng.lng, event.latlng.lat]});
+    saveDrawnFeature({type: "Point", coordinates: [point.lng, point.lat]});
     return;
   }
-  if (state.draftLayer) state.map.removeLayer(state.draftLayer);
+  removeMapOverlay(state.draftLayer);
   const style = {color: TYPE_COLORS[state.draw.payload.feature_type] || TYPE_COLORS.other, weight: 4, dashArray: "7 6"};
-  state.draftLayer = state.draw.geometryType === "Polygon"
-    ? L.polygon(state.draw.points, style).addTo(state.map)
-    : L.polyline(state.draw.points, style).addTo(state.map);
+  if (state.mapProvider === "google") {
+    const googleStyle = {
+      map: state.map,
+      strokeColor: style.color,
+      strokeWeight: style.weight,
+      strokeOpacity: .9,
+      fillColor: style.color,
+      fillOpacity: .2,
+    };
+    state.draftLayer = state.draw.geometryType === "Polygon"
+      ? new google.maps.Polygon({...googleStyle, paths: state.draw.points})
+      : new google.maps.Polyline({...googleStyle, path: state.draw.points});
+  } else {
+    state.draftLayer = state.draw.geometryType === "Polygon"
+      ? L.polygon(state.draw.points, style).addTo(state.map)
+      : L.polyline(state.draw.points, style).addTo(state.map);
+  }
   $("#draw-help").textContent = `${state.draw.points.length} vértice${state.draw.points.length === 1 ? "" : "s"} marcado${state.draw.points.length === 1 ? "" : "s"}.`;
 }
 
@@ -1674,7 +1928,7 @@ async function saveDrawnFeature(geometry) {
 
 function cancelDrawing() {
   state.draw = null;
-  if (state.draftLayer && state.map) state.map.removeLayer(state.draftLayer);
+  removeMapOverlay(state.draftLayer);
   state.draftLayer = null;
   $("#draw-toolbar").classList.add("hidden");
   $("#map").classList.remove("drawing-cursor");
@@ -1857,8 +2111,7 @@ async function confirmKmzImport() {
     await Promise.all([loadFeatures(true), loadImportHistory()]);
     await loadNetworks();
     if (state.importPreview.bounds && state.map) {
-      const [west, south, east, north] = state.importPreview.bounds;
-      state.map.fitBounds([[south, west], [north, east]], {padding: [80, 80]});
+      fitMapBounds(state.importPreview.bounds, 80, 19);
     }
   } catch (error) {
     button.disabled = false;
