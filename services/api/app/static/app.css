@@ -241,7 +241,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .system-state strong { font-size: 10px; font-weight: 700; }
 .system-state small { margin-top: 2px; color: rgb(255 255 255 / 34%); font-size: 9px; }
 
-.workspace { min-width: 0; display: grid; grid-template-rows: 82px minmax(0, 1fr); }
+.workspace { min-width: 0; min-height: 0; height: 100vh; overflow: hidden; display: grid; grid-template-rows: 82px minmax(0, 1fr); }
 .topbar { z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 96%); }
 .topbar h2 { margin: 4px 0 0; font-family: Georgia, serif; font-size: 21px; font-weight: 400; }
 .breadcrumb { margin: 0; color: #91a1b0; font-size: 10px; }
@@ -339,7 +339,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .spinner { width: 15px; height: 15px; display: inline-block; border: 2px solid rgb(255 255 255 / 25%); border-top-color: var(--mint); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.modal { width: min(620px, calc(100% - 30px)); border: 0; border-radius: 15px; padding: 0; color: var(--ink); background: var(--white); box-shadow: 0 28px 90px rgb(5 26 44 / 38%); }
+.modal { width: min(620px, calc(100% - 30px)); max-height: calc(100vh - 30px); overflow: auto; border: 0; border-radius: 15px; padding: 0; color: var(--ink); background: var(--white); box-shadow: 0 28px 90px rgb(5 26 44 / 38%); }
 .modal::backdrop { background: rgb(5 26 44 / 58%); backdrop-filter: blur(3px); }
 .modal > form, .modal > section { padding: 25px; }
 .modal h2 { margin: 5px 0 0; font-family: Georgia, serif; font-size: 27px; font-weight: 400; }
@@ -394,6 +394,12 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .import-history-row strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .import-history-row small { margin-top: 2px; color: var(--muted); font-size: 8px; }
 .import-history-row > span { color: var(--muted); font-size: 9px; text-align: right; }
+.operation-status { margin: 18px 0 0; border: 1px solid #8bd9c0; border-radius: 9px; padding: 11px 13px; color: #087555; background: #e8f9f3; font-size: 11px; font-weight: 700; }
+.operation-status.error { border-color: #efb7bf; color: var(--danger); background: #fff1f3; }
+.kmz-export-section { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; border: 1px solid var(--line); border-radius: 11px; padding: 15px 16px; background: var(--paper); }
+.kmz-export-section h3 { margin: 0 0 4px; font-size: 12px; }
+.kmz-export-section p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.kmz-export-section .button { flex: 0 0 auto; }
 
 .inventory-stage { min-height: 0; overflow: auto; padding: 32px; background: var(--paper); }
 .inventory-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
@@ -405,7 +411,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .inventory-stats strong { color: var(--mint-dark); font-family: Georgia, serif; font-size: 29px; font-weight: 400; }
 .inventory-stats span { color: var(--muted); font-size: 9px; }
 .inventory-card { margin-top: 18px; border: 1px solid var(--line); border-radius: 13px; background: var(--white); box-shadow: var(--shadow-soft); }
-.inventory-toolbar { display: grid; grid-template-columns: minmax(210px, 1fr) 190px 190px auto; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid var(--line); }
+.inventory-toolbar { display: grid; grid-template-columns: minmax(210px, 1fr) 170px 170px 145px auto; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid var(--line); }
 .inventory-toolbar.optical-toolbar { grid-template-columns: minmax(260px, 1fr) 190px auto; }
 .inventory-toolbar input, .inventory-toolbar select { min-height: 39px; font-size: 11px; }
 .inventory-search { position: relative; display: block; }
@@ -431,6 +437,9 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .inventory-empty > span { font-size: 28px; color: var(--mint); }
 .inventory-empty strong { color: var(--ink); font-size: 12px; }
 .inventory-empty small { font-size: 9px; }
+.inventory-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--line); padding: 12px 14px; }
+.inventory-pagination span { min-width: 100px; color: var(--muted); font-size: 10px; text-align: center; }
+.inventory-pagination button:disabled { cursor: default; }
 
 .device-edit-form { display: grid; gap: 16px; margin-top: 22px; }
 .device-detail-actions { display: flex; justify-content: space-between; gap: 10px; }
@@ -525,6 +534,8 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 :root[data-theme="dark"] .file-drop:focus-within { background: #12334a; }
 :root[data-theme="dark"] .import-empty-state { background: linear-gradient(145deg, #0d2233, #0c2b42); }
 :root[data-theme="dark"] .import-preview { background: #0b2031; }
+:root[data-theme="dark"] .operation-status { border-color: #236b59; color: #91ebce; background: #0b3028; }
+:root[data-theme="dark"] .operation-status.error { border-color: #63343e; color: #ff9baa; background: #2c1720; }
 :root[data-theme="dark"] .preview-stats div { background: #102e44; }
 :root[data-theme="dark"] .breakdown-item { color: #a8bfd0; background: #193248; }
 :root[data-theme="dark"] .role-badge { background: #12344d; }
@@ -545,7 +556,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .detail-panel { top: 350px; max-height: calc(100% - 430px); }
   .search-box { min-width: 180px; }
   .inventory-stats { grid-template-columns: repeat(2, 1fr); }
-  .inventory-toolbar { grid-template-columns: 1fr 160px 160px; }
+  .inventory-toolbar { grid-template-columns: 1fr 150px 150px 140px; }
   .inventory-result-count { grid-column: 1 / -1; text-align: left; }
 }
 
@@ -576,6 +587,7 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .inventory-toolbar { grid-template-columns: 1fr 1fr; }
   .inventory-toolbar.optical-toolbar { grid-template-columns: 1fr 1fr; }
   .inventory-search { grid-column: 1 / -1; }
+  .kmz-export-section { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 540px) {

@@ -15,14 +15,14 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css?v=0.10.3">
+    <link rel="stylesheet" href="/static/app.css?v=0.11.0">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js?v=0.10.3"></script>
+    <script defer src="/static/app.js?v=0.11.0"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -119,7 +119,7 @@
           <button class="nav-item" data-view="optical"><span class="nav-icon">◫</span><span>Equipamentos</span></button>
           <button class="nav-item" data-view="fibers"><span class="nav-icon">⌇</span><span>Cabos e fibras</span></button>
           <button class="nav-item" data-view="integrations"><span class="nav-icon">⇄</span><span>Integrações</span><small>em breve</small></button>
-          <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇧</span><span>Importar KMZ</span></button>
+          <button id="imports-nav" class="nav-item admin-only" data-action="imports"><span class="nav-icon">⇅</span><span>Arquivos KMZ</span></button>
           <button id="users-nav" class="nav-item admin-only" data-action="users"><span class="nav-icon">♙</span><span>Usuários</span></button>
         </nav>
         <div class="sidebar-foot">
@@ -239,6 +239,7 @@
               <label class="inventory-search"><span aria-hidden="true">⌕</span><input id="inventory-search" type="search" placeholder="Buscar por nome ou origem" aria-label="Buscar no inventário"></label>
               <label><span class="sr-only">Filtrar por tipo</span><select id="inventory-type-filter"><option value="">Todos os tipos</option></select></label>
               <label><span class="sr-only">Filtrar por status</span><select id="inventory-status-filter"><option value="">Todos os status</option></select></label>
+              <label><span class="sr-only">Itens por página</span><select id="inventory-page-size" aria-label="Itens por página"><option value="10">10 por página</option><option value="25" selected>25 por página</option><option value="50">50 por página</option><option value="100">100 por página</option></select></label>
               <strong id="inventory-result-count" class="inventory-result-count">0 resultados</strong>
             </div>
             <div class="inventory-table-wrap">
@@ -248,6 +249,11 @@
               </table>
               <div id="inventory-empty" class="inventory-empty hidden"><span>▦</span><strong>Nenhum elemento encontrado</strong><small>Ajuste os filtros ou importe uma planta KMZ.</small></div>
             </div>
+            <nav id="inventory-pagination" class="inventory-pagination" aria-label="Paginação do inventário">
+              <button id="inventory-previous-page" class="button ghost small" type="button">← Anterior</button>
+              <span id="inventory-page-label">Página 1 de 1</span>
+              <button id="inventory-next-page" class="button ghost small" type="button">Próxima →</button>
+            </nav>
           </section>
         </section>
 
@@ -489,7 +495,7 @@
 
     <dialog id="imports-dialog" class="modal wide-modal">
       <section>
-        <header><div><p class="overline">Dados geográficos</p><h2>Importar arquivo KMZ</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <header><div><p class="overline">Dados geográficos</p><h2>Importar ou exportar KMZ</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
         <div class="import-layout">
           <form id="kmz-preview-form" class="import-form">
             <label class="file-drop" for="kmz-file">
@@ -534,6 +540,11 @@
             <button id="kmz-import-button" class="button primary wide" type="button">Confirmar importação</button>
           </section>
         </div>
+        <p id="kmz-operation-status" class="operation-status hidden" role="status" aria-live="polite"></p>
+        <section class="kmz-export-section">
+          <div><h3>Exportar inventário geográfico</h3><p id="kmz-export-hint">Baixe os elementos atuais em um arquivo compatível com Google Earth e QGIS.</p></div>
+          <button id="kmz-export-button" class="button ghost" type="button">↓ Exportar KMZ</button>
+        </section>
         <section class="import-history-section">
           <div class="section-title"><h3>Importações recentes</h3><button id="refresh-imports-button" class="icon-button" type="button" aria-label="Atualizar histórico">↻</button></div>
           <div id="imports-history" class="imports-history"><span class="field-hint">Nenhuma importação registrada.</span></div>

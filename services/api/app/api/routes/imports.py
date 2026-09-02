@@ -1,17 +1,22 @@
 """Administrator-only preview and idempotent KMZ import endpoints."""
 
 import json
+import re
 import uuid
+from datetime import UTC, datetime
+from io import BytesIO
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select, text
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, select, text
 
 from app.api.dependencies import AdminUser, DbSession
 from app.models.map_feature import MapFeature
 from app.models.map_import import MapImport
 from app.models.network import ServiceNetwork
 from app.services.audit import record_audit
+from app.services.kmz_export import build_kmz
 from app.services.kmz_import import MAX_UPLOAD_BYTES, KmzValidationError, ParsedKmz, parse_kmz
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -204,6 +209,53 @@ async def import_kmz(
 def list_imports(_: AdminUser, db: DbSession) -> list[dict[str, Any]]:
     items = db.scalars(select(MapImport).order_by(MapImport.created_at.desc()).limit(50))
     return [_import_response(item) for item in items]
+
+
+@router.get("/kmz/export")
+def export_kmz(
+    _: AdminUser,
+    db: DbSession,
+    network_id: uuid.UUID | None = None,
+) -> StreamingResponse:
+    network = db.get(ServiceNetwork, network_id) if network_id else None
+    if network_id and network is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="network not found")
+    query = select(MapFeature, func.ST_AsGeoJSON(MapFeature.geometry)).order_by(
+        MapFeature.created_at, MapFeature.id
+    )
+    if network_id:
+        query = query.where(MapFeature.network_id == network_id)
+    features = [
+        {
+            "id": str(feature.id),
+            "geometry": json.loads(geometry_json),
+            "properties": {
+                **feature.properties,
+                "feature_type": feature.feature_type,
+                "name": feature.name,
+                "status": feature.status,
+            },
+        }
+        for feature, geometry_json in db.execute(query)
+    ]
+    if not features:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="no map features available for export",
+        )
+    document_name = network.name if network else "Gestor Hub Fiber"
+    safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "-", document_name).strip("-").lower()
+    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
+    filename = f"{safe_name or 'gestor-hub-fiber'}-{timestamp}.kmz"
+    content = build_kmz(features, document_name)
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.google-earth.kmz",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Feature-Count": str(len(features)),
+        },
+    )
 
 
 def _geometry_expression(geometry: dict[str, Any]):

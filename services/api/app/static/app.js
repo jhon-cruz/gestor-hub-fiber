@@ -82,6 +82,8 @@ const state = {
   hasFitBounds: false,
   importFile: null,
   importPreview: null,
+  inventoryPage: 1,
+  inventoryPageSize: Math.min(100, Math.max(10, Number(localStorage.getItem("gestorHubInventoryPageSize")) || 25)),
   view: "map",
   networks: [],
   selectedNetworkId: localStorage.getItem("gestorHubNetworkId") || "",
@@ -175,6 +177,7 @@ function translateError(message) {
     "username already exists": "Este nome de usuário já está em uso.",
     "stale feature revision": "Este ativo foi alterado por outra pessoa. O mapa será atualizado.",
     "administrator role required": "Esta ação exige acesso de administrador.",
+    "no map features available for export": "Não existem elementos geográficos para exportar.",
   };
   return messages[message] || message;
 }
@@ -895,8 +898,12 @@ function renderInventory() {
       && (!type || properties.feature_type === type)
       && (!status || properties.status === status);
   });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / state.inventoryPageSize));
+  state.inventoryPage = Math.min(Math.max(1, state.inventoryPage), pageCount);
+  const start = (state.inventoryPage - 1) * state.inventoryPageSize;
+  const visible = filtered.slice(start, start + state.inventoryPageSize);
 
-  body.replaceChildren(...filtered.map((feature) => {
+  body.replaceChildren(...visible.map((feature) => {
     const properties = feature.properties;
     const row = document.createElement("tr");
     const identityCell = document.createElement("td");
@@ -945,7 +952,15 @@ function renderInventory() {
   }));
 
   $("#inventory-empty").classList.toggle("hidden", filtered.length > 0);
-  $("#inventory-result-count").textContent = `${filtered.length.toLocaleString("pt-BR")} resultado${filtered.length === 1 ? "" : "s"}`;
+  const firstVisible = filtered.length ? start + 1 : 0;
+  const lastVisible = Math.min(start + state.inventoryPageSize, filtered.length);
+  $("#inventory-result-count").textContent = filtered.length
+    ? `${firstVisible.toLocaleString("pt-BR")}–${lastVisible.toLocaleString("pt-BR")} de ${filtered.length.toLocaleString("pt-BR")}`
+    : "0 resultados";
+  $("#inventory-page-label").textContent = `Página ${state.inventoryPage} de ${pageCount}`;
+  $("#inventory-previous-page").disabled = state.inventoryPage <= 1;
+  $("#inventory-next-page").disabled = state.inventoryPage >= pageCount;
+  $("#inventory-pagination").classList.toggle("hidden", filtered.length === 0);
   $("#inventory-total").textContent = state.features.length.toLocaleString("pt-BR");
   $("#inventory-optical").textContent = state.features.filter((feature) =>
     ["cto", "splice_box", "splitter", "olt", "dio", "ont"].includes(feature.properties.feature_type)
@@ -2031,6 +2046,7 @@ function handleKmzFile(event) {
   $("#kmz-preview").classList.add("hidden");
   $("#kmz-empty-state").classList.remove("hidden");
   $("#kmz-error").textContent = "";
+  setKmzOperationStatus();
   if (!file) {
     $("#kmz-file-label").textContent = "Selecione um arquivo .kmz";
     return;
@@ -2126,8 +2142,10 @@ async function confirmKmzImport() {
     });
     button.textContent = "Importação concluída";
     $("#kmz-preview-badge").textContent = "Importado";
+    const successMessage = `Importação KMZ concluída com sucesso: ${result.created_count.toLocaleString("pt-BR")} novos e ${result.updated_count.toLocaleString("pt-BR")} atualizados.`;
+    setKmzOperationStatus(successMessage);
     toast(
-      `${result.created_count.toLocaleString("pt-BR")} novos e ${result.updated_count.toLocaleString("pt-BR")} atualizados.`,
+      successMessage,
     );
     await Promise.all([loadFeatures(true), loadImportHistory()]);
     await loadNetworks();
@@ -2137,13 +2155,72 @@ async function confirmKmzImport() {
   } catch (error) {
     button.disabled = false;
     button.textContent = label;
+    setKmzOperationStatus(error.message, true);
     toast(error.message, "error");
+  }
+}
+
+function setKmzOperationStatus(message = "", isError = false) {
+  const status = $("#kmz-operation-status");
+  status.textContent = message;
+  status.classList.toggle("hidden", !message);
+  status.classList.toggle("error", isError);
+}
+
+async function exportKmz() {
+  const button = $("#kmz-export-button");
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = "Preparando exportação...";
+  setKmzOperationStatus();
+  try {
+    const network = state.selectedNetworkId
+      ? `?network_id=${encodeURIComponent(state.selectedNetworkId)}`
+      : "";
+    const response = await fetch(`/api/v1/imports/kmz/export${network}`, {
+      headers: {Authorization: `Bearer ${state.token}`},
+    });
+    if (response.status === 401) {
+      logout(false);
+      throw new Error("Sua sessão expirou. Entre novamente.");
+    }
+    if (!response.ok) {
+      let payload = {};
+      try { payload = await response.json(); } catch { /* response without JSON */ }
+      throw new Error(translateError(errorMessage(payload)));
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const filename = disposition.match(/filename="([^"]+)"/)?.[1] || "gestor-hub-fiber.kmz";
+    const featureCount = Number(response.headers.get("X-Feature-Count")) || 0;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const download = document.createElement("a");
+    download.href = url;
+    download.download = filename;
+    document.body.append(download);
+    download.click();
+    download.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const successMessage = `Exportação KMZ concluída com sucesso: ${featureCount.toLocaleString("pt-BR")} elementos exportados.`;
+    setKmzOperationStatus(successMessage);
+    toast(successMessage);
+  } catch (error) {
+    setKmzOperationStatus(error.message, true);
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
   }
 }
 
 async function openImports() {
   if (state.user.role !== "admin") return;
+  setKmzOperationStatus();
   $("#imports-dialog").showModal();
+  const network = state.networks.find((item) => item.id === state.selectedNetworkId);
+  $("#kmz-export-hint").textContent = network
+    ? `A exportação incluirá somente os elementos da rede “${network.name}”.`
+    : "A exportação incluirá todos os elementos do inventário geográfico.";
   await loadImportHistory();
 }
 
@@ -2206,10 +2283,27 @@ function wireEvents() {
   $("#kmz-file").addEventListener("change", handleKmzFile);
   $("#kmz-preview-form").addEventListener("submit", previewKmz);
   $("#kmz-import-button").addEventListener("click", confirmKmzImport);
+  $("#kmz-export-button").addEventListener("click", exportKmz);
   $("#refresh-imports-button").addEventListener("click", loadImportHistory);
-  $("#inventory-search").addEventListener("input", renderInventory);
-  $("#inventory-type-filter").addEventListener("change", renderInventory);
-  $("#inventory-status-filter").addEventListener("change", renderInventory);
+  $("#inventory-search").addEventListener("input", () => { state.inventoryPage = 1; renderInventory(); });
+  $("#inventory-type-filter").addEventListener("change", () => { state.inventoryPage = 1; renderInventory(); });
+  $("#inventory-status-filter").addEventListener("change", () => { state.inventoryPage = 1; renderInventory(); });
+  $("#inventory-page-size").addEventListener("change", (event) => {
+    state.inventoryPageSize = Math.min(100, Math.max(10, Number(event.target.value) || 25));
+    state.inventoryPage = 1;
+    localStorage.setItem("gestorHubInventoryPageSize", String(state.inventoryPageSize));
+    renderInventory();
+  });
+  $("#inventory-previous-page").addEventListener("click", () => {
+    state.inventoryPage = Math.max(1, state.inventoryPage - 1);
+    renderInventory();
+    $("#inventory-view").scrollTo({top: 0, behavior: "smooth"});
+  });
+  $("#inventory-next-page").addEventListener("click", () => {
+    state.inventoryPage += 1;
+    renderInventory();
+    $("#inventory-view").scrollTo({top: 0, behavior: "smooth"});
+  });
   $("#inventory-map-button").addEventListener("click", () => showView("map"));
   $("#device-search").addEventListener("input", renderOpticalDevices);
   $("#device-type-filter").addEventListener("change", renderOpticalDevices);
@@ -2286,6 +2380,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatusOptions($("#new-cable-status"));
   setTypeOptions($("#detail-type"));
   setInventoryFilters();
+  $("#inventory-page-size").value = String(state.inventoryPageSize);
   wireEvents();
   showInitialScreen();
 });

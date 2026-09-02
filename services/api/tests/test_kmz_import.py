@@ -56,6 +56,7 @@ def test_viewer_cannot_preview_or_import_kmz(client, viewer_headers):
         client.post("/api/v1/imports/kmz/preview", headers=viewer_headers, **payload).status_code
         == 403
     )
+    assert client.get("/api/v1/imports/kmz/export", headers=viewer_headers).status_code == 403
 
 
 def test_admin_previews_and_imports_kmz_idempotently(client, admin_headers):
@@ -95,6 +96,18 @@ def test_admin_previews_and_imports_kmz_idempotently(client, admin_headers):
     history = client.get("/api/v1/imports", headers=admin_headers)
     assert history.status_code == 200
     assert len(history.json()) == 1
+
+    exported = client.get("/api/v1/imports/kmz/export", headers=admin_headers)
+    assert exported.status_code == 200, exported.text
+    assert exported.headers["content-type"] == "application/vnd.google-earth.kmz"
+    assert exported.headers["x-feature-count"] == "3"
+    assert exported.headers["content-disposition"].endswith('.kmz"')
+    with ZipFile(BytesIO(exported.content)) as archive:
+        assert archive.namelist() == ["doc.kml"]
+        exported_kml = archive.read("doc.kml")
+    assert b"CTO 001" in exported_kml
+    assert b"Cabo 12FO" in exported_kml
+    assert b"LineString" in exported_kml
 
 
 def test_import_rejects_unsafe_or_invalid_archives(client, admin_headers):
