@@ -81,6 +81,7 @@ services:
       - python scripts/prepare_test_database.py && alembic upgrade head && ruff format --check app tests alembic scripts && ruff check app tests alembic scripts && python -m pytest -q
     environment:
       <<: *api-environment
+      APP_ENVIRONMENT: test
       APP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gestor_hub}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}@db:5432/${POSTGRES_DB:-gestor_hub_fiber}_test
       TEST_ADMIN_DATABASE_URL: postgresql://${POSTGRES_USER:-gestor_hub}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}@db:5432/postgres
       POSTGRES_TEST_DATABASE: ${POSTGRES_DB:-gestor_hub_fiber}_test

@@ -3,7 +3,9 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
+from sqlalchemy.engine import make_url
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.main import app
 from app.models.audit import AuditLog
@@ -24,8 +26,27 @@ from app.models.user import User, UserRole
 from app.services.security import hash_password
 
 
+def _require_isolated_test_database() -> None:
+    """Abort before destructive fixtures can touch a non-test database."""
+
+    settings = get_settings()
+    database_name = make_url(settings.database_url).database or ""
+    if settings.environment != "test" or not database_name.endswith("_test"):
+        pytest.fail(
+            "Refusing to run destructive tests outside an isolated *_test database "
+            "with APP_ENVIRONMENT=test. Use `make test`.",
+            pytrace=False,
+        )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_isolated_test_database():
+    _require_isolated_test_database()
+
+
 @pytest.fixture(autouse=True)
 def clean_database():
+    _require_isolated_test_database()
     with SessionLocal.begin() as db:
         db.execute(delete(AuditLog))
         db.execute(delete(GeocodeCache))
