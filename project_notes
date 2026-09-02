@@ -132,6 +132,7 @@ Não existe usuário ou senha padrão versionado. O primeiro administrador pode 
 
 ## Pendências e próximos marcos
 
+- [ ] Implementar, na fase de distribuição, o plano de integração Google Maps gerenciada descrito em `docs/PLANO_DISTRIBUICAO_GOOGLE_MAPS.md`.
 - [ ] Criar o fork público `jhon-cruz/fiberq` no GitHub; a tela final está preparada e exige confirmação do proprietário.
 - [ ] Alterar a URL do submódulo de upstream para o fork e manter o upstream como fonte de atualização.
 - [x] Publicar a fundação no repositório `jhon-cruz/gestor-hub-fiber` (commit inicial `bdecf27`).
