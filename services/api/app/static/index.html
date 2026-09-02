@@ -15,14 +15,14 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     >
-    <link rel="stylesheet" href="/static/app.css?v=0.11.0">
+    <link rel="stylesheet" href="/static/app.css?v=0.11.1">
     <script
       defer
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script defer src="/static/app.js?v=0.11.0"></script>
+    <script defer src="/static/app.js?v=0.11.1"></script>
   </head>
   <body>
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
@@ -550,6 +550,20 @@
           <div id="imports-history" class="imports-history"><span class="field-hint">Nenhuma importação registrada.</span></div>
         </section>
       </section>
+    </dialog>
+
+    <dialog id="delete-import-dialog" class="modal confirm-modal">
+      <form id="delete-import-form">
+        <header><div><p class="overline">Exclusão de lote KMZ</p><h2>Excluir mapa importado?</h2></div><button class="icon-button modal-close" type="button" aria-label="Fechar">×</button></header>
+        <section class="destructive-summary">
+          <strong id="delete-import-name">—</strong>
+          <p id="delete-import-count">Os elementos deste arquivo serão excluídos.</p>
+        </section>
+        <p class="dialog-note danger-note">Esta operação remove somente os elementos atualmente vinculados a esta importação. Ela não pode ser desfeita.</p>
+        <label><span>Digite <strong>excluir</strong> para confirmar</span><input id="delete-import-confirmation" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="excluir" required></label>
+        <p id="delete-import-error" class="form-error" role="alert"></p>
+        <footer><button class="button ghost modal-close" type="button">Cancelar</button><button id="delete-import-button" class="button danger" type="submit" disabled>Excluir mapa e elementos</button></footer>
+      </form>
     </dialog>
   </body>
 </html>

@@ -9,9 +9,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select, text
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, func, select, text
 
 from app.api.dependencies import AdminUser, DbSession
+from app.models.fiber_topology import FiberConnection
 from app.models.map_feature import MapFeature
 from app.models.map_import import MapImport
 from app.models.network import ServiceNetwork
@@ -24,6 +26,18 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 KmzFile = Annotated[UploadFile, File()]
 SourceNamespace = Annotated[str, Form(min_length=1, max_length=120)]
 DefaultStatus = Annotated[str, Form()]
+
+
+class DeleteImportConfirmation(BaseModel):
+    confirmation: str = Field(min_length=1, max_length=20)
+
+    @field_validator("confirmation")
+    @classmethod
+    def require_delete_word(cls, value: str) -> str:
+        normalized = value.strip().casefold()
+        if normalized != "excluir":
+            raise ValueError("type excluir to confirm")
+        return normalized
 
 
 async def _parse_upload(file: UploadFile, source_namespace: str, default_status: str) -> ParsedKmz:
@@ -58,7 +72,12 @@ def _existing_refs(db: DbSession, namespace: str) -> set[str]:
     )
 
 
-def _import_response(item: MapImport, *, already_imported: bool = False) -> dict[str, Any]:
+def _import_response(
+    item: MapImport,
+    *,
+    already_imported: bool = False,
+    current_feature_count: int | None = None,
+) -> dict[str, Any]:
     return {
         "id": str(item.id),
         "network_id": str(item.network_id) if item.network_id else None,
@@ -74,6 +93,9 @@ def _import_response(item: MapImport, *, already_imported: bool = False) -> dict
         "created_at": item.created_at,
         "completed_at": item.completed_at,
         "already_imported": already_imported,
+        "current_feature_count": (
+            item.feature_count if current_feature_count is None else current_feature_count
+        ),
     }
 
 
@@ -207,8 +229,70 @@ async def import_kmz(
 
 @router.get("")
 def list_imports(_: AdminUser, db: DbSession) -> list[dict[str, Any]]:
-    items = db.scalars(select(MapImport).order_by(MapImport.created_at.desc()).limit(50))
-    return [_import_response(item) for item in items]
+    rows = db.execute(
+        select(MapImport, func.count(MapFeature.id))
+        .outerjoin(MapFeature, MapFeature.import_id == MapImport.id)
+        .group_by(MapImport.id)
+        .order_by(MapImport.created_at.desc())
+        .limit(50)
+    )
+    return [
+        _import_response(item, current_feature_count=current_count) for item, current_count in rows
+    ]
+
+
+@router.delete("/{import_id}")
+def delete_import(
+    import_id: uuid.UUID,
+    payload: DeleteImportConfirmation,
+    actor: AdminUser,
+    db: DbSession,
+) -> dict[str, Any]:
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+        {"key": f"map-import-delete:{import_id}"},
+    )
+    batch = db.get(MapImport, import_id)
+    if batch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="import not found")
+    feature_ids = select(MapFeature.id).where(MapFeature.import_id == import_id)
+    fusion_count = db.scalar(
+        select(func.count(FiberConnection.id)).where(
+            FiberConnection.enclosure_feature_id.in_(feature_ids)
+        )
+    )
+    if fusion_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="import contains enclosures with registered fiber connections",
+        )
+    current_count = db.scalar(
+        select(func.count(MapFeature.id)).where(MapFeature.import_id == import_id)
+    )
+    before_data = {
+        "filename": batch.filename,
+        "source_namespace": batch.source_namespace,
+        "file_sha256": batch.file_sha256,
+        "feature_count": batch.feature_count,
+        "deleted_feature_count": current_count,
+    }
+    deleted = db.execute(delete(MapFeature).where(MapFeature.import_id == import_id)).rowcount
+    record_audit(
+        db,
+        actor_user_id=actor.id,
+        action="map_import.delete",
+        entity_type="map_import",
+        entity_id=str(batch.id),
+        before_data=before_data,
+        after_data={"confirmation": payload.confirmation, "deleted_feature_count": deleted},
+    )
+    db.delete(batch)
+    db.flush()
+    return {
+        "id": str(import_id),
+        "filename": before_data["filename"],
+        "deleted_feature_count": deleted,
+    }
 
 
 @router.get("/kmz/export")

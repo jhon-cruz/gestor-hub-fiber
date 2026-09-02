@@ -12,7 +12,7 @@
 - Ambiente de desenvolvimento: macOS + Docker Desktop
 - Plataforma-alvo do servidor: Ubuntu Server 26.04 LTS ou superior
 - Endpoint local: `http://localhost:3030`
-- Versão atual: `0.11.0`
+- Versão atual: `0.11.1`
 
 ## Entregue nesta fase
 
@@ -89,6 +89,8 @@
 - [x] Exportação administrativa do inventário completo ou da rede selecionada para KMZ compatível com Google Earth/QGIS.
 - [x] Confirmações persistentes e acessíveis de conclusão da importação e exportação KMZ.
 - [x] Planejamento do diagrama de fusões, disponibilidade de fibras e ocupação de portas documentado em `docs/PLANO_DIAGRAMA_FUSOES.md`.
+- [x] Exclusão administrativa de lote KMZ pela área de importações recentes, com confirmação digitada, transação e auditoria.
+- [x] Exclusão de importação bloqueada quando caixas do lote possuem fusões registradas; vínculos geográficos opcionais usam `SET NULL`.
 
 ## Validação executada
 
@@ -97,7 +99,7 @@
 - Readiness com banco: saudável em `http://localhost:3030/ready`.
 - Containers ativos: API e PostGIS com healthchecks aprovados.
 - Qualidade: `ruff format --check` e `ruff check` aprovados.
-- Testes da API/RBAC/interface/importação/exportação/domínio óptico/redes/geocodificação/topologia: 19 testes aprovados na versão 0.11.0 exclusivamente no banco isolado.
+- Testes da API/RBAC/interface/importação/exportação/exclusão de lote/domínio óptico/redes/geocodificação/topologia: 20 testes aprovados na versão 0.11.1 exclusivamente no banco isolado.
 - Interface local recarregada em navegador real, sem erros ou avisos no console; credenciais Google configuradas fora do repositório.
 - Maps JavaScript API validada com referenciador `localhost:3030`, resposta HTTP 200 e ausência de erros de chave, faturamento ou ativação.
 - Google Geocoding validado em consulta real, retornando resultado normalizado pelo provedor `google`.

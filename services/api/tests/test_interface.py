@@ -27,6 +27,9 @@ def test_interface_is_served_with_security_headers(client):
     assert 'id="inventory-pagination"' in response.text
     assert 'id="kmz-export-button"' in response.text
     assert 'id="kmz-operation-status"' in response.text
+    assert 'id="delete-import-dialog"' in response.text
+    assert 'id="delete-import-confirmation"' in response.text
+    assert 'id="delete-import-button"' in response.text
     assert 'id="optical-view"' in response.text
     assert 'id="device-create-dialog"' in response.text
     assert 'id="device-detail-dialog"' in response.text

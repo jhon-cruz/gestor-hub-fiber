@@ -1,10 +1,16 @@
 """KMZ preview, safety and idempotent import integration tests."""
 
+import uuid
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from sqlalchemy import select
+
 from app.core.database import SessionLocal
+from app.models.fiber_topology import FiberConnection
 from app.models.map_feature import MapFeature
+from app.models.map_import import MapImport
+from app.models.user import User
 
 KML = b"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -41,12 +47,15 @@ def kmz_file(kml: bytes = KML, member: str = "doc.kml") -> bytes:
     return output.getvalue()
 
 
-def upload_payload(content: bytes | None = None):
+def upload_payload(
+    content: bytes | None = None,
+    *,
+    filename: str = "rede-teste.kmz",
+    namespace: str = "rede-teste",
+):
     return {
-        "files": {
-            "file": ("rede-teste.kmz", content or kmz_file(), "application/vnd.google-earth.kmz")
-        },
-        "data": {"source_namespace": "rede-teste", "default_status": "active"},
+        "files": {"file": (filename, content or kmz_file(), "application/vnd.google-earth.kmz")},
+        "data": {"source_namespace": namespace, "default_status": "active"},
     }
 
 
@@ -57,6 +66,13 @@ def test_viewer_cannot_preview_or_import_kmz(client, viewer_headers):
         == 403
     )
     assert client.get("/api/v1/imports/kmz/export", headers=viewer_headers).status_code == 403
+    denied = client.request(
+        "DELETE",
+        f"/api/v1/imports/{uuid.uuid4()}",
+        headers=viewer_headers,
+        json={"confirmation": "excluir"},
+    )
+    assert denied.status_code == 403
 
 
 def test_admin_previews_and_imports_kmz_idempotently(client, admin_headers):
@@ -96,6 +112,7 @@ def test_admin_previews_and_imports_kmz_idempotently(client, admin_headers):
     history = client.get("/api/v1/imports", headers=admin_headers)
     assert history.status_code == 200
     assert len(history.json()) == 1
+    assert history.json()[0]["current_feature_count"] == 3
 
     exported = client.get("/api/v1/imports/kmz/export", headers=admin_headers)
     assert exported.status_code == 200, exported.text
@@ -108,6 +125,68 @@ def test_admin_previews_and_imports_kmz_idempotently(client, admin_headers):
     assert b"CTO 001" in exported_kml
     assert b"Cabo 12FO" in exported_kml
     assert b"LineString" in exported_kml
+
+    copied = client.post(
+        "/api/v1/imports/kmz",
+        headers=admin_headers,
+        **upload_payload(filename="rede-copia.kmz", namespace="rede-copia"),
+    )
+    assert copied.status_code == 201, copied.text
+    copied_id = copied.json()["id"]
+    with SessionLocal() as db:
+        assert db.query(MapFeature).count() == 6
+
+    rejected = client.request(
+        "DELETE",
+        f"/api/v1/imports/{copied_id}",
+        headers=admin_headers,
+        json={"confirmation": "confirmar"},
+    )
+    assert rejected.status_code == 422
+    with SessionLocal() as db:
+        assert db.query(MapFeature).count() == 6
+
+    deleted = client.request(
+        "DELETE",
+        f"/api/v1/imports/{copied_id}",
+        headers=admin_headers,
+        json={"confirmation": " EXCLUIR "},
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["deleted_feature_count"] == 3
+    with SessionLocal() as db:
+        assert db.query(MapFeature).count() == 3
+        assert db.scalar(select(MapImport).where(MapImport.id == copied_id)) is None
+        assert db.query(MapFeature).filter(MapFeature.source_namespace == "rede-teste").count() == 3
+
+
+def test_import_deletion_is_blocked_when_an_enclosure_has_fusions(client, admin_headers):
+    imported = client.post("/api/v1/imports/kmz", headers=admin_headers, **upload_payload()).json()
+    with SessionLocal.begin() as db:
+        enclosure = db.scalar(select(MapFeature).where(MapFeature.source_ref == "ceo-001"))
+        admin = db.scalar(select(User).where(User.username == "admin_test"))
+        db.add(
+            FiberConnection(
+                enclosure_feature_id=enclosure.id,
+                connection_type="fusion",
+                loss_db=0.1,
+                created_by=admin.id,
+                updated_by=admin.id,
+            )
+        )
+
+    blocked = client.request(
+        "DELETE",
+        f"/api/v1/imports/{imported['id']}",
+        headers=admin_headers,
+        json={"confirmation": "excluir"},
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == (
+        "import contains enclosures with registered fiber connections"
+    )
+    with SessionLocal() as db:
+        assert db.query(MapFeature).count() == 3
 
 
 def test_import_rejects_unsafe_or_invalid_archives(client, admin_headers):

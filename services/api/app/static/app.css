@@ -389,11 +389,18 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
 .import-history-section { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); }
 .section-title h3 { margin: 0; font-size: 12px; }
 .imports-history { display: grid; gap: 7px; margin-top: 11px; }
-.import-history-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; }
+.import-history-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; }
 .import-history-row strong, .import-history-row small { display: block; }
 .import-history-row strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .import-history-row small { margin-top: 2px; color: var(--muted); font-size: 8px; }
 .import-history-row > span { color: var(--muted); font-size: 9px; text-align: right; }
+.import-history-actions { display: flex; justify-content: flex-end; }
+.import-history-actions .button { min-height: 31px; padding: 0 11px; font-size: 9px; }
+.confirm-modal { width: min(520px, calc(100% - 30px)); }
+.destructive-summary { margin: 22px 0 16px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--paper); }
+.destructive-summary strong { display: block; overflow-wrap: anywhere; font-size: 12px; }
+.destructive-summary p { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.danger-note { border-left-color: var(--danger); }
 .operation-status { margin: 18px 0 0; border: 1px solid #8bd9c0; border-radius: 9px; padding: 11px 13px; color: #087555; background: #e8f9f3; font-size: 11px; font-weight: 700; }
 .operation-status.error { border-color: #efb7bf; color: var(--danger); background: #fff1f3; }
 .kmz-export-section { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; border: 1px solid var(--line); border-radius: 11px; padding: 15px 16px; background: var(--paper); }
@@ -588,6 +595,8 @@ input[readonly] { color: var(--muted); background: #f0f5f9; }
   .inventory-toolbar.optical-toolbar { grid-template-columns: 1fr 1fr; }
   .inventory-search { grid-column: 1 / -1; }
   .kmz-export-section { align-items: stretch; flex-direction: column; }
+  .import-history-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .import-history-row > span { text-align: left; }
 }
 
 @media (max-width: 540px) {

@@ -82,6 +82,7 @@ const state = {
   hasFitBounds: false,
   importFile: null,
   importPreview: null,
+  selectedImport: null,
   inventoryPage: 1,
   inventoryPageSize: Math.min(100, Math.max(10, Number(localStorage.getItem("gestorHubInventoryPageSize")) || 25)),
   view: "map",
@@ -178,6 +179,8 @@ function translateError(message) {
     "stale feature revision": "Este ativo foi alterado por outra pessoa. O mapa será atualizado.",
     "administrator role required": "Esta ação exige acesso de administrador.",
     "no map features available for export": "Não existem elementos geográficos para exportar.",
+    "import not found": "Esta importação não existe mais. Atualize o histórico.",
+    "import contains enclosures with registered fiber connections": "Este mapa contém caixas com fusões registradas. Remova ou transfira as fusões antes de excluir a importação.",
   };
   return messages[message] || message;
 }
@@ -2243,14 +2246,57 @@ async function loadImportHistory() {
       meta.textContent = `${item.source_namespace} · ${new Date(item.created_at).toLocaleString("pt-BR")}`;
       identity.append(name, meta);
       const total = document.createElement("span");
-      total.textContent = `${item.feature_count.toLocaleString("pt-BR")} elementos`;
+      total.textContent = `${item.current_feature_count.toLocaleString("pt-BR")} elementos atuais`;
       const result = document.createElement("span");
       result.textContent = `+${item.created_count} / ↻${item.updated_count}`;
-      row.append(identity, total, result);
+      const actions = document.createElement("div");
+      actions.className = "import-history-actions";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "button danger small";
+      remove.textContent = "Excluir";
+      remove.addEventListener("click", () => openDeleteImport(item));
+      actions.append(remove);
+      row.append(identity, total, result, actions);
       return row;
     }));
   } catch (error) {
     container.textContent = error.message;
+  }
+}
+
+function openDeleteImport(item) {
+  state.selectedImport = item;
+  $("#delete-import-name").textContent = item.filename;
+  $("#delete-import-count").textContent = `${item.current_feature_count.toLocaleString("pt-BR")} elementos atuais serão excluídos do inventário e do mapa.`;
+  $("#delete-import-confirmation").value = "";
+  $("#delete-import-error").textContent = "";
+  $("#delete-import-button").disabled = true;
+  $("#delete-import-dialog").showModal();
+  $("#delete-import-confirmation").focus();
+}
+
+async function deleteSelectedImport(event) {
+  event.preventDefault();
+  if (!state.selectedImport) return;
+  const form = event.currentTarget;
+  $("#delete-import-error").textContent = "";
+  setBusy(form, true);
+  try {
+    const result = await request(`/api/v1/imports/${state.selectedImport.id}`, {
+      method: "DELETE",
+      body: JSON.stringify({confirmation: $("#delete-import-confirmation").value}),
+    });
+    $("#delete-import-dialog").close();
+    const successMessage = `Importação “${result.filename}” excluída com sucesso: ${result.deleted_feature_count.toLocaleString("pt-BR")} elementos removidos.`;
+    setKmzOperationStatus(successMessage);
+    state.selectedImport = null;
+    await Promise.all([loadFeatures(true), loadImportHistory(), loadNetworks()]);
+    toast(successMessage);
+  } catch (error) {
+    $("#delete-import-error").textContent = error.message;
+  } finally {
+    setBusy(form, false);
   }
 }
 
@@ -2285,6 +2331,10 @@ function wireEvents() {
   $("#kmz-import-button").addEventListener("click", confirmKmzImport);
   $("#kmz-export-button").addEventListener("click", exportKmz);
   $("#refresh-imports-button").addEventListener("click", loadImportHistory);
+  $("#delete-import-confirmation").addEventListener("input", (event) => {
+    $("#delete-import-button").disabled = event.target.value.trim().toLowerCase() !== "excluir";
+  });
+  $("#delete-import-form").addEventListener("submit", deleteSelectedImport);
   $("#inventory-search").addEventListener("input", () => { state.inventoryPage = 1; renderInventory(); });
   $("#inventory-type-filter").addEventListener("change", () => { state.inventoryPage = 1; renderInventory(); });
   $("#inventory-status-filter").addEventListener("change", () => { state.inventoryPage = 1; renderInventory(); });
